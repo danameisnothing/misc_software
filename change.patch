@@ -1,0 +1,338 @@
+diff --git a/meson.build b/meson.build
+index 1146a26..ccffa0f 100644
+--- a/meson.build
++++ b/meson.build
+@@ -35,7 +35,7 @@ endif
+ pre_args += '-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE'
+ 
+ # TODO: this is very incomplete
+-is_unixy = false
++is_unixy = true
+ if ['linux', 'cygwin', 'gnu'].contains(host_machine.system())
+   pre_args += '-D_GNU_SOURCE'
+   pre_args += '-DHAVE_PTHREAD'
+diff --git a/src/file_utils.cpp b/src/file_utils.cpp
+index 80e3031..9e0e61e 100644
+--- a/src/file_utils.cpp
++++ b/src/file_utils.cpp
+@@ -36,7 +36,7 @@ std::string get_basename(const std::string&& path)
+     return path;
+ }
+ 
+-#ifdef __linux__
++//#ifdef __linux__
+ std::vector<std::string> ls(const char* root, const char* prefix, LS_FLAGS flags)
+ {
+     std::vector<std::string> list;
+@@ -219,4 +219,4 @@ std::string to_lower(const std::string& str) {
+     return lowered;
+ }
+ 
+-#endif // __linux__
++//#endif // __linux__
+diff --git a/src/gl/glad.c b/src/gl/glad.c
+index 0abde08..b40f842 100644
+--- a/src/gl/glad.c
++++ b/src/gl/glad.c
+@@ -1886,7 +1886,9 @@ static void load_GL_VERSION_2_0(GLADloadproc load) {
+ 	glad_glVertexAttrib4Nuiv = (PFNGLVERTEXATTRIB4NUIVPROC)load("glVertexAttrib4Nuiv");
+ 	glad_glVertexAttrib4Nusv = (PFNGLVERTEXATTRIB4NUSVPROC)load("glVertexAttrib4Nusv");
+ 	glad_glVertexAttrib4bv = (PFNGLVERTEXATTRIB4BVPROC)load("glVertexAttrib4bv");
++    printf("help...\n");
+ 	glad_glVertexAttrib4d = (PFNGLVERTEXATTRIB4DPROC)load("glVertexAttrib4d");
++    printf("i'm scared...'\n");
+ 	glad_glVertexAttrib4dv = (PFNGLVERTEXATTRIB4DVPROC)load("glVertexAttrib4dv");
+ 	glad_glVertexAttrib4f = (PFNGLVERTEXATTRIB4FPROC)load("glVertexAttrib4f");
+ 	glad_glVertexAttrib4fv = (PFNGLVERTEXATTRIB4FVPROC)load("glVertexAttrib4fv");
+diff --git a/src/gl/inject_glx.cpp b/src/gl/inject_glx.cpp
+index 0cf2984..8b63d2b 100644
+--- a/src/gl/inject_glx.cpp
++++ b/src/gl/inject_glx.cpp
+@@ -22,6 +22,7 @@
+ #include "gl_hud.h"
+ #include "../config.h"
+ #include "../fps_limiter.h"
++#include "../real_dlsym.h"
+ 
+ using namespace MangoHud::GL;
+ 
+@@ -41,17 +42,20 @@ static void* get_glx_proc_address(const char* name) {
+     glx.Load();
+ 
+     void *func = nullptr;
+-    if (glx.GetProcAddress)
++    /*if (glx.GetProcAddress)
+         func = glx.GetProcAddress( (const unsigned char*) name );
+ 
+     if (!func && glx.GetProcAddressARB)
+         func = glx.GetProcAddressARB( (const unsigned char*) name );
+ 
+     if (!func)
+-        func = get_proc_address( name );
++        func = get_proc_address( name );*/
++
++    func = real_dlsym(NULL, name);
+ 
+     if (!func) {
+         SPDLOG_ERROR("Failed to get function '{}'", name);
++        std::cout << glx.GetProcAddress( (const unsigned char*) name ) << ", " << glx.GetProcAddressARB( (const unsigned char*) name ) << "\n";
+     }
+ 
+     return func;
+diff --git a/src/gpu.cpp b/src/gpu.cpp
+index 3c00a69..bdaa9e8 100644
+--- a/src/gpu.cpp
++++ b/src/gpu.cpp
+@@ -7,8 +7,9 @@ namespace fs = ghc::filesystem;
+ GPUS::GPUS(const overlay_params* early_params) {
+     std::set<std::string> gpu_entries;
+     auto params = early_params ? early_params : get_params().get();
++    std::cout << "HELL\n";
+ 
+-    for (const auto& entry : fs::directory_iterator("/sys/class/drm")) {
++    for (const auto& entry : fs::directory_iterator("/dev/dri")) {
+         if (!entry.is_directory())
+             continue;
+ 
+@@ -23,6 +24,8 @@ GPUS::GPUS(const overlay_params* early_params) {
+             }
+         }
+     }
++    // Holy shit, I think I actually caught the first instance of ghc::filesystem::filesystem_error, just by looking for a random file that uses ghc::filesystem
++    std::cout << "HELL2\n";
+ 
+     // Now process the sorted GPU entries
+     uint8_t idx = 0, total_active = 0;
+diff --git a/src/hud_elements.cpp b/src/hud_elements.cpp
+index 3cac5af..50b7d37 100644
+--- a/src/hud_elements.cpp
++++ b/src/hud_elements.cpp
+@@ -1014,6 +1014,7 @@ void HudElements::frame_timing(){
+                                     NULL, min_time, max_time,
+                                     ImVec2(width, height));
+             } else {
++                // TODO: some nice haves here!
+ #ifndef __linux__
+                 ImGui::PlotLines(hash, get_time_stat, HUDElements.sw_stats,
+                                 ARRAY_SIZE(HUDElements.sw_stats->frames_stats), 0,
+@@ -1056,7 +1057,7 @@ void HudElements::frame_timing(){
+             }
+         }
+         ImGui::EndChild();
+-#ifdef __linux__
++//#ifdef __linux__
+         if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_throttling_status_graph] &&
+             gpus && gpus->active_gpu() && gpus->active_gpu()->throttling()){
+             ImGui::Dummy(ImVec2(0.0f, real_font_size.y / 2));
+@@ -1077,7 +1078,7 @@ void HudElements::frame_timing(){
+         }
+         ImGui::PopFont();
+         ImGui::PopStyleColor();
+-#endif
++//#endif
+     }
+ }
+ 
+diff --git a/src/loaders/loader_glx.cpp b/src/loaders/loader_glx.cpp
+index c0772c7..f25daff 100644
+--- a/src/loaders/loader_glx.cpp
++++ b/src/loaders/loader_glx.cpp
+@@ -22,20 +22,20 @@ bool glx_loader::Load() {
+   // Assumes glxtrace.so lives outside of usual library paths and is only preloaded
+   handle = real_dlopen("glxtrace.so", RTLD_LAZY);
+ #endif
+-  if (!handle)
++  /*if (!handle)
+     handle = real_dlopen("libGL.so.1", RTLD_LAZY);
+   if (!handle) {
+     SPDLOG_ERROR("Failed to open " MANGOHUD_ARCH " libGL.so.1: {}", dlerror());
+     return false;
+-  }
++  }*/
+ 
+   GetProcAddress =
+       reinterpret_cast<decltype(this->GetProcAddress)>(
+-          real_dlsym(handle, "glXGetProcAddress"));
++          real_dlsym(NULL, "glXGetProcAddress"));
+ 
+   GetProcAddressARB =
+       reinterpret_cast<decltype(this->GetProcAddressARB)>(
+-          real_dlsym(handle, "glXGetProcAddressARB"));
++          real_dlsym(NULL, "glXGetProcAddressARB"));
+ 
+   if (!GetProcAddress) {
+     CleanUp(true);
+diff --git a/src/loaders/loader_x11.cpp b/src/loaders/loader_x11.cpp
+index 32e0b40..4f2ea4c 100644
+--- a/src/loaders/loader_x11.cpp
++++ b/src/loaders/loader_x11.cpp
+@@ -20,7 +20,6 @@ bool libx11_loader::Load(const std::string& library_name) {
+     return false;
+   }
+ 
+-
+   XOpenDisplay =
+       reinterpret_cast<decltype(this->XOpenDisplay)>(
+           dlsym(library_, "XOpenDisplay"));
+diff --git a/src/meson.build b/src/meson.build
+index e500c0c..6b4c752 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -1,4 +1,5 @@
+ glslang = find_program('glslang', 'glslangValidator')
++is_unixy = true
+ 
+ if get_option('dynamic_string_tokens')
+   ld_prefix = get_option('prefix') + '/\$LIB/'
+@@ -176,7 +177,7 @@ if is_unixy
+   endif
+ endif
+ 
+-link_args = cc.get_supported_link_arguments(['-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-Wl,--exclude-libs,ALL', '-lGL', '-static-libstdc++'])
++link_args = cc.get_supported_link_arguments(['-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-Wl,--exclude-libs,ALL', '-lGL', '-static-libstdc++', '-Wl,--undefined-version'])
+ # meson fails to check version-script so just force add
+ link_args += '-Wl,--version-script,@0@'.format(join_paths(meson.current_source_dir(), 'mangohud.version'))
+ 
+diff --git a/src/real_dlsym.c b/src/real_dlsym.c
+index 3f1abd9..09dabe8 100644
+--- a/src/real_dlsym.c
++++ b/src/real_dlsym.c
+@@ -10,6 +10,7 @@
+ #include <stdlib.h>
+ #include "real_dlsym.h"
+ #include "elfhacks.h"
++#include <string.h>
+ 
+ void *(*__dlopen)(const char *, int) = NULL;
+ void *(*__dlsym)(void *, const char *) = NULL;
+@@ -59,6 +60,40 @@ static void get_real_functions()
+     }
+ }
+ 
++static void* func_lookup2(const char* symbol)
++{
++    eh_obj_t libdl;
++    int ret;
++    void *val = NULL;
++
++    const char* libs[] = {
++        "/lib/libc.so.7",
++        "*libc.so*",
++        "*libthr.so*",
++        "*libGL.so*",
++        "*libGLX_nvidia.so*",
++        "*libX11.so*",
++        "*libvulkan*.so*",
++    };
++
++    for (size_t i = 0; i < sizeof(libs) / sizeof(*libs); i++)
++    {
++        ret = eh_find_obj(&libdl, libs[i]);
++        if (ret)
++            continue;
++        // FIXME: HACK, EXPERIMENT!, yay to insecure functions
++        //if (strcmp(symbol, "glVertexAttrib4d") == 0) printf("before disaster\n");
++        eh_find_sym(&libdl, symbol, (void **) &val);
++        // FIXME: HACK, EXPERIMENT!, yay to insecure functions
++        //if (strcmp(symbol, "glVertexAttrib4d") == 0) printf("after disaster, %p\n", val);
++        eh_destroy_obj(&libdl);
++
++        if (val != NULL) return val;
++    }
++
++    return NULL;
++}
++
+ /**
+  * \brief dlopen() wrapper, just passes calls to real dlopen()
+  *        and writes information to standard output
+@@ -89,6 +124,10 @@ void *real_dlopen(const char *filename, int flag)
+ 
+     return result;
+ }
++static void dummy_func(void) {
++    // This does nothing. It's a stub to prevent MangoHud from crashing
++    // when it demands a GL function that the driver doesn't export.
++}
+ 
+ /**
+  * \brief dlsym() wrapper, passes calls to real dlsym() and
+@@ -99,12 +138,37 @@ void *real_dlsym(void *handle, const char *symbol)
+     if (__dlsym == NULL)
+         get_real_functions();
+ 
++    // FIXME: HACK, EXPERIMENT!, yay to insecure functions
++    // glxgears only needs this hack : glVertexAttrib4d
++    if (strcmp(symbol, "glVertexAttrib4d") == 0) return (void*)&dummy_func;
++    // supertuxkart needs these hacks : __free_hook, drmSyncobjImportSyncFile, glCompressedMultiTexSubImage2DEXT, glProgramUniform4fvEXT, glProgramUniformMatrix4x3dvEXT, glGenProgramPipelinesEXT
++    if (strcmp(symbol, "__free_hook") == 0) return (void*)&dummy_func;
++    if (strcmp(symbol, "drmSyncobjImportSyncFile") == 0) return (void*)&dummy_func;
++    if (strcmp(symbol, "glCompressedMultiTexSubImage2DEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(symbol, "glProgramUniform4fvEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(symbol, "glProgramUniformMatrix4x3dvEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(symbol, "glGenProgramPipelinesEXT") == 0) return (void*)&dummy_func;
++
+     void *result = __dlsym(handle, symbol);
++    printf("[real_dlsym()] Requesting symbol '%s' (handle: %p, result: %p)\n", symbol, handle, result);
++    void *result2 = func_lookup2(symbol);
+ 
+     if (print_dlsym)
+         printf("dlsym(%p, %s) = %p\n", handle, symbol, result);
+ 
+-    return result;
++    if (result != NULL) {
++        printf("[real_dlsym()] HOLY SHIT %s IS NOT NULL, WOOOO %p\n", symbol, result);
++        return result;
++    } else {
++        // this receives functions like eglStreamPostD3DTextureANGLE, which is not our job to handle. This is for clarity
++        if (result2 == NULL) {
++            printf("[real_dlsym()] Failed search using our custom lookup method for symbol '%s' (function pointer: %p)\n", symbol, result2);
++            return NULL;
++        }
++
++        printf("[real_dlsym()] Using our custom lookup method for symbol '%s' succeeded (function pointer: %p)\n", symbol, result2);
++        return result2;
++    }
+ }
+ 
+ char* real_dlerror(void)
+diff --git a/src/shared_x11.cpp b/src/shared_x11.cpp
+index ef6a005..23a8dcf 100644
+--- a/src/shared_x11.cpp
++++ b/src/shared_x11.cpp
+@@ -48,10 +48,13 @@ bool init_x11() {
+ 
+     if (HUDElements.display_server == HUDElements.display_servers::UNKNOWN) {
+         int opcode, event, error;
+-        if (libx11->XQueryExtension(display.get(), "XWAYLAND", &opcode, &event, &error))
++        // FIXME: temporary fix! libx11->XQueryExtension crashes for some reason
++        /*if (libx11->XQueryExtension(display.get(), "XWAYLAND", &opcode, &event, &error))
+ 		    HUDElements.display_server = HUDElements.display_servers::XWAYLAND;
+         else
+             HUDElements.display_server = HUDElements.display_servers::XORG;
++        */
++        HUDElements.display_server = HUDElements.display_servers::XORG;
+ 
+ 	}
+ 
+diff --git a/src/shell.h b/src/shell.h
+index f2f14ed..9288f08 100644
+--- a/src/shell.h
++++ b/src/shell.h
+@@ -18,12 +18,14 @@ private:
+     struct stat stat_buffer;
+     bool runtime = false;
+ 
+-#ifdef __linux__
++//#ifdef __linux__
+     void setNonBlocking(int fd) {
++        #ifdef __linux__
+         int flags = fcntl(fd, F_GETFL, 0);
+         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
++        #endif
+     }
+-#endif
++//#endif
+ 
+     void writeCommand(std::string command);
+     std::string readOutput();
