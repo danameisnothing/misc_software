@@ -194,7 +194,7 @@ index e500c0c..6b4c752 100644
  link_args += '-Wl,--version-script,@0@'.format(join_paths(meson.current_source_dir(), 'mangohud.version'))
  
 diff --git a/src/real_dlsym.c b/src/real_dlsym.c
-index 3f1abd9..09dabe8 100644
+index 3f1abd9..4c279b5 100644
 --- a/src/real_dlsym.c
 +++ b/src/real_dlsym.c
 @@ -10,6 +10,7 @@
@@ -205,7 +205,7 @@ index 3f1abd9..09dabe8 100644
  
  void *(*__dlopen)(const char *, int) = NULL;
  void *(*__dlsym)(void *, const char *) = NULL;
-@@ -59,6 +60,40 @@ static void get_real_functions()
+@@ -59,6 +60,50 @@ static void get_real_functions()
      }
  }
  
@@ -223,6 +223,16 @@ index 3f1abd9..09dabe8 100644
 +        "*libGLX_nvidia.so*",
 +        "*libX11.so*",
 +        "*libvulkan*.so*",
++        "*libEGL.so*",
++        "*libEGL_nvidia.so*",
++        // required for Chrome to find NSS
++        "*libnss3.so*",
++        "*libnssutil3.so*",
++        "*libnspr4.so*",
++        "*libplc4.so*",
++        "*libplds4.so*",
++        "*libsmime3.so*",
++        "*libsoftokn3.so*",
 +    };
 +
 +    for (size_t i = 0; i < sizeof(libs) / sizeof(*libs); i++)
@@ -246,7 +256,7 @@ index 3f1abd9..09dabe8 100644
  /**
   * \brief dlopen() wrapper, just passes calls to real dlopen()
   *        and writes information to standard output
-@@ -89,6 +124,10 @@ void *real_dlopen(const char *filename, int flag)
+@@ -89,6 +134,10 @@ void *real_dlopen(const char *filename, int flag)
  
      return result;
  }
@@ -257,40 +267,50 @@ index 3f1abd9..09dabe8 100644
  
  /**
   * \brief dlsym() wrapper, passes calls to real dlsym() and
-@@ -99,12 +138,37 @@ void *real_dlsym(void *handle, const char *symbol)
+@@ -99,12 +148,44 @@ void *real_dlsym(void *handle, const char *symbol)
      if (__dlsym == NULL)
          get_real_functions();
  
+-    void *result = __dlsym(handle, symbol);
++    char *req = (char*) symbol;
++    // FIXME: yay to insecure functions
++    // FreeBSD apparently doesn't have these functions
++    if (strcmp(req, "localtime64") == 0) req = "localtime";
++    if (strcmp(req, "localtime64_r") == 0) req = "localtime_r";
++
 +    // FIXME: HACK, EXPERIMENT!, yay to insecure functions
 +    // glxgears only needs this hack : glVertexAttrib4d
-+    if (strcmp(symbol, "glVertexAttrib4d") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "glVertexAttrib4d") == 0) return (void*)&dummy_func;
 +    // supertuxkart needs these hacks : __free_hook, drmSyncobjImportSyncFile, glCompressedMultiTexSubImage2DEXT, glProgramUniform4fvEXT, glProgramUniformMatrix4x3dvEXT, glGenProgramPipelinesEXT
-+    if (strcmp(symbol, "__free_hook") == 0) return (void*)&dummy_func;
-+    if (strcmp(symbol, "drmSyncobjImportSyncFile") == 0) return (void*)&dummy_func;
-+    if (strcmp(symbol, "glCompressedMultiTexSubImage2DEXT") == 0) return (void*)&dummy_func;
-+    if (strcmp(symbol, "glProgramUniform4fvEXT") == 0) return (void*)&dummy_func;
-+    if (strcmp(symbol, "glProgramUniformMatrix4x3dvEXT") == 0) return (void*)&dummy_func;
-+    if (strcmp(symbol, "glGenProgramPipelinesEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "__free_hook") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "drmSyncobjImportSyncFile") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "glCompressedMultiTexSubImage2DEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "glProgramUniform4fvEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "glProgramUniformMatrix4x3dvEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "glGenProgramPipelinesEXT") == 0) return (void*)&dummy_func;
++    if (strcmp(req, "eglStreamPostD3DTextureANGLE") == 0) return (void*)&dummy_func;
 +
-     void *result = __dlsym(handle, symbol);
-+    printf("[real_dlsym()] Requesting symbol '%s' (handle: %p, result: %p)\n", symbol, handle, result);
-+    void *result2 = func_lookup2(symbol);
++    void *result = __dlsym(handle, req);
++    //printf("[real_dlsym()] Requesting symbol '%s' (handle: %p, result: %p)\n", req, handle, result);
++    void *result2 = func_lookup2(req);
  
      if (print_dlsym)
-         printf("dlsym(%p, %s) = %p\n", handle, symbol, result);
- 
+-        printf("dlsym(%p, %s) = %p\n", handle, symbol, result);
+-
 -    return result;
++        printf("dlsym(%p, %s) = %p\n", handle, req, result);
++
 +    if (result != NULL) {
-+        printf("[real_dlsym()] HOLY SHIT %s IS NOT NULL, WOOOO %p\n", symbol, result);
++        printf("[real_dlsym()] HOLY SHIT %s IS NOT NULL, WOOOO %p\n", req, result);
 +        return result;
 +    } else {
 +        // this receives functions like eglStreamPostD3DTextureANGLE, which is not our job to handle. This is for clarity
 +        if (result2 == NULL) {
-+            printf("[real_dlsym()] Failed search using our custom lookup method for symbol '%s' (function pointer: %p)\n", symbol, result2);
++            printf("[real_dlsym()] Failed search using our custom lookup method for symbol '%s' (function pointer: %p)\n", req, result2);
 +            return NULL;
 +        }
 +
-+        printf("[real_dlsym()] Using our custom lookup method for symbol '%s' succeeded (function pointer: %p)\n", symbol, result2);
++        //printf("[real_dlsym()] Using our custom lookup method for symbol '%s' succeeded (function pointer: %p)\n", req, result2);
 +        return result2;
 +    }
  }
