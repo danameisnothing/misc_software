@@ -1,0 +1,312 @@
+diff --git a/meson.build b/meson.build
+index 1146a26..17a2e0d 100644
+--- a/meson.build
++++ b/meson.build
+@@ -36,7 +36,7 @@ pre_args += '-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE'
+ 
+ # TODO: this is very incomplete
+ is_unixy = false
+-if ['linux', 'cygwin', 'gnu'].contains(host_machine.system())
++if ['linux', 'cygwin', 'gnu', 'freebsd'].contains(host_machine.system())
+   pre_args += '-D_GNU_SOURCE'
+   pre_args += '-DHAVE_PTHREAD'
+   is_unixy = true
+diff --git a/src/amdgpu.cpp b/src/amdgpu.cpp
+index 9a9a261..e1064ce 100644
+--- a/src/amdgpu.cpp
++++ b/src/amdgpu.cpp
+@@ -1,8 +1,6 @@
+ #include <spdlog/spdlog.h>
+ #include <thread>
+-#ifdef __linux__
+ #include <sys/sysinfo.h>
+-#endif
+ #include "amdgpu.h"
+ #include "gpu.h"
+ #include "cpu.h"
+diff --git a/src/app/main.cpp b/src/app/main.cpp
+index 2235476..02b4dd0 100644
+--- a/src/app/main.cpp
++++ b/src/app/main.cpp
+@@ -17,9 +17,7 @@
+ #include "mangoapp.h"
+ #include "mangoapp_proto.h"
+ #include <GLFW/glfw3.h>
+-#ifdef __linux__
+ #include "implot.h"
+-#endif
+ 
+ #define GLFW_EXPOSE_NATIVE_X11
+ #include <GLFW/glfw3native.h>
+@@ -262,9 +260,7 @@ static GLFWwindow* init(const char* glsl_version){
+     glfwMakeContextCurrent(window);
+     glfwSwapInterval(1); // Enable vsync
+     ImGui::CreateContext();
+-#ifdef __linux__
+     ImPlot::CreateContext();
+-#endif
+     ImGuiIO& io = ImGui::GetIO(); (void)io;
+     io.IniFilename = NULL;
+     ImGui::StyleColorsDark();
+diff --git a/src/file_utils.cpp b/src/file_utils.cpp
+index 80e3031..ffbbef9 100644
+--- a/src/file_utils.cpp
++++ b/src/file_utils.cpp
+@@ -36,7 +36,6 @@ std::string get_basename(const std::string&& path)
+     return path;
+ }
+ 
+-#ifdef __linux__
+ std::vector<std::string> ls(const char* root, const char* prefix, LS_FLAGS flags)
+ {
+     std::vector<std::string> list;
+@@ -218,5 +217,3 @@ std::string to_lower(const std::string& str) {
+                    [](unsigned char c) { return std::tolower(c); });
+     return lowered;
+ }
+-
+-#endif // __linux__
+diff --git a/src/gl/gl_hud.cpp b/src/gl/gl_hud.cpp
+index 2ef688d..01dc582 100644
+--- a/src/gl/gl_hud.cpp
++++ b/src/gl/gl_hud.cpp
+@@ -8,9 +8,7 @@
+ #include <unistd.h>
+ #include <spdlog/spdlog.h>
+ #include <imgui.h>
+-#ifdef __linux__
+ #include <implot.h>
+-#endif
+ #include "imgui_utils.h"
+ #include "gl_hud.h"
+ #include "file_utils.h"
+diff --git a/src/gpu.cpp b/src/gpu.cpp
+index 3c00a69..b1313c4 100644
+--- a/src/gpu.cpp
++++ b/src/gpu.cpp
+@@ -8,7 +8,7 @@ GPUS::GPUS(const overlay_params* early_params) {
+     std::set<std::string> gpu_entries;
+     auto params = early_params ? early_params : get_params().get();
+ 
+-    for (const auto& entry : fs::directory_iterator("/sys/class/drm")) {
++    for (const auto& entry : fs::directory_iterator("/dev/dri")) {
+         if (!entry.is_directory())
+             continue;
+ 
+@@ -48,7 +48,7 @@ GPUS::GPUS(const overlay_params* early_params) {
+             }
+         }
+ 
+-        std::string path = "/sys/class/drm/" + node_name;
++        std::string path = "/dev/dri/" + node_name;
+         std::string device_address = get_pci_device_address(path);  // Store the result
+         const char* pci_dev = device_address.c_str();
+ 
+diff --git a/src/hud_elements.cpp b/src/hud_elements.cpp
+index 3cac5af..a2bf847 100644
+--- a/src/hud_elements.cpp
++++ b/src/hud_elements.cpp
+@@ -1075,9 +1075,9 @@ void HudElements::frame_timing(){
+                 ImGui::Text("Thermal throttling");
+             }
+         }
++#endif
+         ImGui::PopFont();
+         ImGui::PopStyleColor();
+-#endif
+     }
+ }
+ 
+diff --git a/src/hud_elements.h b/src/hud_elements.h
+index 70deb51..3637d6c 100644
+--- a/src/hud_elements.h
++++ b/src/hud_elements.h
+@@ -64,9 +64,7 @@ class HudElements{
+ 
+         display_servers display_server = UNKNOWN;
+         std::unique_ptr<Net> net = nullptr;
+-#ifdef __linux__
+         std::unique_ptr<Shell> shell = nullptr;
+-#endif
+ 
+         void sort_elements(const std::pair<std::string, std::string>& option);
+         void legacy_elements(const overlay_params* temp_params);
+diff --git a/src/imgui_utils.h b/src/imgui_utils.h
+index f2797e4..9c7ce21 100644
+--- a/src/imgui_utils.h
++++ b/src/imgui_utils.h
+@@ -2,9 +2,7 @@
+ 
+ #include <imgui.h>
+ 
+-#ifdef __linux__
+ #include <implot.h>
+-#endif
+ 
+ struct imgui_contexts {
+     ImGuiContext* imgui = nullptr;
+diff --git a/src/logging.cpp b/src/logging.cpp
+index 9ef29ec..1ba0ccc 100644
+--- a/src/logging.cpp
++++ b/src/logging.cpp
+@@ -297,11 +297,9 @@ void Logger::stop_logging() {
+     SPDLOG_INFO("Can't write summary because m_log_files is empty");
+ 
+   clear_log_data();
+-#ifdef __linux__
+   control_client_check(get_params()->control, global_control_client, gpu.c_str());
+   const char * cmd = "LoggingFinished";
+   control_send(global_control_client, cmd, strlen(cmd), 0, 0);
+-#endif
+ }
+ 
+ void Logger::logging(){
+diff --git a/src/mesa/util/os_socket.c b/src/mesa/util/os_socket.c
+index 98ef013..a3e9d55 100644
+--- a/src/mesa/util/os_socket.c
++++ b/src/mesa/util/os_socket.c
+@@ -7,8 +7,6 @@
+ 
+ #include "os_socket.h"
+ 
+-#if defined(__linux__)
+-
+ #include <fcntl.h>
+ #include <poll.h>
+ #include <stddef.h>
+@@ -77,46 +75,4 @@ void
+ os_socket_close(int s)
+ {
+    close(s);
+-}
+-
+-#else
+-
+-int
+-os_socket_listen_abstract(const char *path, int count)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-int
+-os_socket_accept(int s)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-ssize_t
+-os_socket_recv(int socket, void *buffer, size_t length, int flags)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-ssize_t
+-os_socket_send(int socket, const void *buffer, size_t length, int flags)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-void
+-os_socket_block(int s, bool block)
+-{
+-}
+-
+-void
+-os_socket_close(int s)
+-{
+-}
+-
+-#endif
++}
+\ No newline at end of file
+diff --git a/src/meson.build b/src/meson.build
+index e500c0c..fc9dc08 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -176,7 +176,7 @@ if is_unixy
+   endif
+ endif
+ 
+-link_args = cc.get_supported_link_arguments(['-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-Wl,--exclude-libs,ALL', '-lGL', '-static-libstdc++'])
++link_args = cc.get_supported_link_arguments(['-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-Wl,--exclude-libs,ALL', '-lGL', '-static-libstdc++', '-Wl,--undefined-version'])
+ # meson fails to check version-script so just force add
+ link_args += '-Wl,--version-script,@0@'.format(join_paths(meson.current_source_dir(), 'mangohud.version'))
+ 
+diff --git a/src/overlay_params.cpp b/src/overlay_params.cpp
+index e90fbe0..92d8841 100644
+--- a/src/overlay_params.cpp
++++ b/src/overlay_params.cpp
+@@ -6,10 +6,8 @@
+ #include <string.h>
+ #include <stdlib.h>
+ #include <errno.h>
+-#ifdef __linux__
+ #include <wordexp.h>
+ #include <unistd.h>
+-#endif
+ #include "imgui.h"
+ #include <iostream>
+ #include <string>
+diff --git a/src/real_dlsym.c b/src/real_dlsym.c
+index 3f1abd9..c806662 100644
+--- a/src/real_dlsym.c
++++ b/src/real_dlsym.c
+@@ -26,6 +26,7 @@ static void get_real_functions()
+ #if defined(__GLIBC__)
+         "*libdl.so*",
+ #endif
++        "*/libexec/ld-elf.so.*", // for functions to resolve properly, thank you Gemini 3 Pro Preview and Claude 4.5 Sonnet.
+         "*libc.so*",
+         "*libc.*.so*",
+         "*ld-musl-*.so*",
+diff --git a/src/shell.h b/src/shell.h
+index f2f14ed..1a67ea6 100644
+--- a/src/shell.h
++++ b/src/shell.h
+@@ -2,9 +2,7 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <cstring>
+-#ifdef __linux__
+ #include <sys/wait.h>
+-#endif
+ #include <string>
+ #include <memory>
+ #include <sys/stat.h>
+@@ -18,12 +16,10 @@ private:
+     struct stat stat_buffer;
+     bool runtime = false;
+ 
+-#ifdef __linux__
+     void setNonBlocking(int fd) {
+         int flags = fcntl(fd, F_GETFL, 0);
+         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+     }
+-#endif
+ 
+     void writeCommand(std::string command);
+     std::string readOutput();
+diff --git a/src/winesync.h b/src/winesync.h
+index 06e1c3d..6208098 100644
+--- a/src/winesync.h
++++ b/src/winesync.h
+@@ -21,7 +21,6 @@ class WineSync {
+         bool inside_wine = true;
+     public:
+         void determine_sync_variant() {
+-#ifdef __linux__
+             // check that's were inside wine
+             std::string wineProcess = get_exe_path();
+             auto n = wineProcess.find_last_of('/');
+@@ -39,7 +38,6 @@ class WineSync {
+             }
+ 
+             SPDLOG_DEBUG("Wine sync method: {}", methods.at(method));
+-#endif
+         }
+ 
+         bool valid() {

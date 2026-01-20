@@ -1,0 +1,832 @@
+diff --git a/meson.build b/meson.build
+index 1146a26..17a2e0d 100644
+--- a/meson.build
++++ b/meson.build
+@@ -36,7 +36,7 @@ pre_args += '-DSPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE'
+ 
+ # TODO: this is very incomplete
+ is_unixy = false
+-if ['linux', 'cygwin', 'gnu'].contains(host_machine.system())
++if ['linux', 'cygwin', 'gnu', 'freebsd'].contains(host_machine.system())
+   pre_args += '-D_GNU_SOURCE'
+   pre_args += '-DHAVE_PTHREAD'
+   is_unixy = true
+diff --git a/src/amdgpu.cpp b/src/amdgpu.cpp
+index 9a9a261..e1064ce 100644
+--- a/src/amdgpu.cpp
++++ b/src/amdgpu.cpp
+@@ -1,8 +1,6 @@
+ #include <spdlog/spdlog.h>
+ #include <thread>
+-#ifdef __linux__
+ #include <sys/sysinfo.h>
+-#endif
+ #include "amdgpu.h"
+ #include "gpu.h"
+ #include "cpu.h"
+diff --git a/src/app/main.cpp b/src/app/main.cpp
+index 2235476..02b4dd0 100644
+--- a/src/app/main.cpp
++++ b/src/app/main.cpp
+@@ -17,9 +17,7 @@
+ #include "mangoapp.h"
+ #include "mangoapp_proto.h"
+ #include <GLFW/glfw3.h>
+-#ifdef __linux__
+ #include "implot.h"
+-#endif
+ 
+ #define GLFW_EXPOSE_NATIVE_X11
+ #include <GLFW/glfw3native.h>
+@@ -262,9 +260,7 @@ static GLFWwindow* init(const char* glsl_version){
+     glfwMakeContextCurrent(window);
+     glfwSwapInterval(1); // Enable vsync
+     ImGui::CreateContext();
+-#ifdef __linux__
+     ImPlot::CreateContext();
+-#endif
+     ImGuiIO& io = ImGui::GetIO(); (void)io;
+     io.IniFilename = NULL;
+     ImGui::StyleColorsDark();
+diff --git a/src/cpu.cpp b/src/cpu.cpp
+index f46faba..f22bc03 100644
+--- a/src/cpu.cpp
++++ b/src/cpu.cpp
+@@ -1,4 +1,6 @@
+ #include "cpu.h"
++#include <cstdio>
++#include <cstdlib>
+ #include <memory>
+ #include <string>
+ #include <iostream>
+@@ -35,6 +37,7 @@
+ #endif
+ 
+ #include "file_utils.h"
++#include <logging.h>
+ 
+ static void calculateCPUData(CPUData& cpuData,
+     unsigned long long int usertime,
+@@ -114,6 +117,22 @@ CPUStats::~CPUStats()
+     }
+ }
+ 
++// from https://medium.com/@ryan_forrester_/splitting-strings-in-c-a-complete-guide-cf162837f4ba
++std::vector<std::string> split(const std::string& str, char delimiter) {
++    std::vector<std::string> tokens;
++    size_t start = 0;
++    size_t end = str.find(delimiter);
++    
++    while (end != std::string::npos) {
++        tokens.push_back(str.substr(start, end - start));
++        start = end + 1;
++        end = str.find(delimiter, start);
++    }
++    
++    tokens.push_back(str.substr(start));
++    return tokens;
++}
++
+ bool CPUStats::Init()
+ {
+     if (m_inited)
+@@ -124,7 +143,19 @@ bool CPUStats::Init()
+     bool first = true;
+     m_cpuData.clear();
+ 
+-    if (!file.is_open()) {
++    std::string total_threads = exec("sysctl kern.cp_times");
++    trim(total_threads);
++    
++    std::vector<std::string> data = split(total_threads, ' ');
++    for (unsigned int i = 0; i < data.size() / 5; i++) {
++        CPUData cpu = {};
++        cpu.totalTime = 1;
++        cpu.totalPeriod = 1;
++        cpu.cpu_id = i;
++        m_cpuData.push_back(cpu);
++    }
++
++    /*if (!file.is_open()) {
+         SPDLOG_ERROR("Failed to opening " PROCSTATFILE);
+         return false;
+     }
+@@ -157,7 +188,7 @@ bool CPUStats::Init()
+             sscanf(line.c_str(), "btime %lld\n", &m_boottime);
+             break;
+         }
+-    } while(true);
++    } while(true);*/
+ 
+ #ifndef TEST_ONLY
+     if (get_params()->enabled[OVERLAY_PARAM_ENABLED_core_type])
+@@ -178,14 +209,41 @@ bool CPUStats::Reinit()
+ bool CPUStats::UpdateCPUData()
+ {
+     unsigned long long int usertime, nicetime, systemtime, idletime;
+-    unsigned long long int ioWait, irq, softIrq, steal, guest, guestnice;
++    unsigned long long int ioWait = 0, irq = 0, softIrq = 0, steal = 0, guest = 0, guestnice = 0;
+     int cpuid = -1;
+     size_t cpu_count = 0;
+ 
+     if (!m_inited)
+         return false;
+ 
+-    std::string line;
++    unsigned long long int interrupt;
++    // Some of these entries simply aren't returned by this command, we ignore them for now.
++    std::string total_cpu = exec("sysctl kern.cp_time");
++    trim(total_cpu);
++    if (sscanf(total_cpu.c_str(), "kern.cp_time: %16llu %16llu %16llu %16llu %16llu", &usertime, &nicetime, &systemtime, &interrupt, &idletime) == 5) {
++        irq = interrupt;
++        calculateCPUData(m_cpuDataTotal, usertime, nicetime, systemtime, idletime, ioWait, irq, softIrq, steal, guest, guestnice);
++    }
++
++    std::string total_threads = exec("sysctl kern.cp_times");
++    trim(total_threads);
++    
++    std::vector<std::string> data = split(total_threads, ' ');
++
++    for (unsigned int i = 0; i < m_cpuData.size(); i++) {
++        // i*5 + 1 --- (i+1)*5
++
++        usertime = std::stoull(data.at((i*5)+1));
++        nicetime = std::stoull(data.at((i*5)+2));
++        systemtime = std::stoull(data.at((i*5)+3));
++        irq = std::stoull(data.at((i*5)+4));
++        idletime = std::stoull(data.at((i*5)+5));
++
++        CPUData& cpuData = m_cpuData[i];
++        calculateCPUData(cpuData, usertime, nicetime, systemtime, idletime, ioWait, irq, softIrq, steal, guest, guestnice);
++    }
++    bool ret = true;
++    /*std::string line;
+     std::ifstream file (PROCSTATFILE);
+     bool ret = false;
+ 
+@@ -211,7 +269,7 @@ bool CPUStats::UpdateCPUData()
+                 return false;
+             }
+ 
+-            if (cpuid < 0 /* can it? */) {
++            if (cpuid < 0) {
+                 SPDLOG_DEBUG("Cpu id '{}' is out of bounds", cpuid);
+                 return false;
+             }
+@@ -229,10 +287,10 @@ bool CPUStats::UpdateCPUData()
+         } else {
+             break;
+         }
+-    } while(true);
++    } while(true);*/
+ 
+-    if (cpu_count < m_cpuData.size())
+-        m_cpuData.resize(cpu_count);
++    /*if (cpu_count < m_cpuData.size())
++        m_cpuData.resize(cpu_count);*/
+ 
+     m_cpuPeriod = (double)m_cpuData[0].totalPeriod / m_cpuData.size();
+     m_updatedCPUs = true;
+@@ -571,6 +629,7 @@ bool CPUStats::GetCpuFile() {
+         path = hwmon + dir;
+         name = read_line(path + "/name");
+         SPDLOG_DEBUG("hwmon: sensor name: {}", name);
++        // TODO: add sysctl dev.cpu.0.temperature and more, this requires kldload amdtemp!
+ 
+         std::map<std::string, std::string> custom_sensor = get_params()->cpu_custom_temp_sensor;
+ 
+@@ -627,7 +686,7 @@ bool CPUStats::GetCpuFile() {
+             SPDLOG_DEBUG("check_thermal_zones: {}", ex.what());
+         }
+     }
+-
++std::cout << "input_empty : " << input.empty() << "input : " << input << "fileexist : " << !file_exists(input) << "\n";
+     if (input.empty() || !file_exists(input)) {
+         SPDLOG_ERROR("Could not find cpu temp sensor location");
+         return false;
+diff --git a/src/file_utils.cpp b/src/file_utils.cpp
+index 80e3031..1fe2467 100644
+--- a/src/file_utils.cpp
++++ b/src/file_utils.cpp
+@@ -36,7 +36,6 @@ std::string get_basename(const std::string&& path)
+     return path;
+ }
+ 
+-#ifdef __linux__
+ std::vector<std::string> ls(const char* root, const char* prefix, LS_FLAGS flags)
+ {
+     std::vector<std::string> list;
+@@ -189,7 +188,7 @@ bool lib_loaded(const std::string& lib, pid_t pid) {
+ 
+    std::string who = pid != -1 ? std::to_string(pid) : "self";
+    auto paths = { fs::path("/proc") / who / "map_files",
+-            fs::path("/proc") / who / "fd" };
++            fs::path("/dev") / "fd" };
+     for (auto& path : paths) {
+         if (dir_exists(path.string())) {
+             for (auto& p : fs::directory_iterator(path)) {
+@@ -218,5 +217,3 @@ std::string to_lower(const std::string& str) {
+                    [](unsigned char c) { return std::tolower(c); });
+     return lowered;
+ }
+-
+-#endif // __linux__
+diff --git a/src/gl/gl_hud.cpp b/src/gl/gl_hud.cpp
+index 2ef688d..01dc582 100644
+--- a/src/gl/gl_hud.cpp
++++ b/src/gl/gl_hud.cpp
+@@ -8,9 +8,7 @@
+ #include <unistd.h>
+ #include <spdlog/spdlog.h>
+ #include <imgui.h>
+-#ifdef __linux__
+ #include <implot.h>
+-#endif
+ #include "imgui_utils.h"
+ #include "gl_hud.h"
+ #include "file_utils.h"
+diff --git a/src/gpu.cpp b/src/gpu.cpp
+index 3c00a69..b1313c4 100644
+--- a/src/gpu.cpp
++++ b/src/gpu.cpp
+@@ -8,7 +8,7 @@ GPUS::GPUS(const overlay_params* early_params) {
+     std::set<std::string> gpu_entries;
+     auto params = early_params ? early_params : get_params().get();
+ 
+-    for (const auto& entry : fs::directory_iterator("/sys/class/drm")) {
++    for (const auto& entry : fs::directory_iterator("/dev/dri")) {
+         if (!entry.is_directory())
+             continue;
+ 
+@@ -48,7 +48,7 @@ GPUS::GPUS(const overlay_params* early_params) {
+             }
+         }
+ 
+-        std::string path = "/sys/class/drm/" + node_name;
++        std::string path = "/dev/dri/" + node_name;
+         std::string device_address = get_pci_device_address(path);  // Store the result
+         const char* pci_dev = device_address.c_str();
+ 
+diff --git a/src/hud_elements.cpp b/src/hud_elements.cpp
+index 3cac5af..b805c5f 100644
+--- a/src/hud_elements.cpp
++++ b/src/hud_elements.cpp
+@@ -20,9 +20,7 @@
+ #include <IconsForkAwesome.h>
+ #include "version.h"
+ #include "blacklist.h"
+-#ifdef __linux__
+ #include "implot.h"
+-#endif
+ #include "amdgpu.h"
+ #include "fps_metrics.h"
+ #include "fex.h"
+@@ -251,12 +249,10 @@ static bool ImGuiTextOverflow(const char* text) {
+ }
+ // This function is only used in battery and battery is not used in windows builds
+ // Battery should probably be reworked to not use this func since nothing else needs it
+-#ifdef __linux__
+ static void ImGuiTableSetColumnIndex(int column)
+ {
+     ImGui::TableSetColumnIndex(std::max(0, std::min(column, ImGui::TableGetColumnCount() - 1)));
+ }
+-#endif
+ 
+ void HudElements::time(){
+     if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_time]){
+@@ -751,7 +747,6 @@ void HudElements::proc_vram() {
+ }
+ 
+ void HudElements::ram(){
+-#ifdef __linux__
+     if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_ram] ||
+         HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_ram_temp]) {
+         ImguiNextColumnFirstItem();
+@@ -792,12 +787,10 @@ void HudElements::ram(){
+         else
+             HUDElements.TextColored(HUDElements.colors.text, "°C");
+     }
+-#endif
+ }
+ 
+ void HudElements::procmem()
+ {
+-#ifdef __linux__
+     const char* unit = nullptr;
+ 
+     if (!HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_procmem])
+@@ -829,7 +822,6 @@ void HudElements::procmem()
+         HUDElements.TextColored(HUDElements.colors.text, "%s", unit);
+         ImGui::PopFont();
+     }
+-#endif
+ }
+ 
+ void HudElements::fps(){
+@@ -1014,12 +1006,6 @@ void HudElements::frame_timing(){
+                                     NULL, min_time, max_time,
+                                     ImVec2(width, height));
+             } else {
+-#ifndef __linux__
+-                ImGui::PlotLines(hash, get_time_stat, HUDElements.sw_stats,
+-                                ARRAY_SIZE(HUDElements.sw_stats->frames_stats), 0,
+-                                NULL, min_time, max_time,
+-                                ImVec2(width, height));
+-#else
+ 
+                 if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_horizontal]) {
+                     ImGui::PlotLines(hash, get_time_stat, HUDElements.sw_stats,
+@@ -1052,11 +1038,9 @@ void HudElements::frame_timing(){
+                         ImPlot::EndPlot();
+                     }
+                 }
+-#endif
+             }
+         }
+         ImGui::EndChild();
+-#ifdef __linux__
+         if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_throttling_status_graph] &&
+             gpus && gpus->active_gpu() && gpus->active_gpu()->throttling()){
+             ImGui::Dummy(ImVec2(0.0f, real_font_size.y / 2));
+@@ -1077,7 +1061,6 @@ void HudElements::frame_timing(){
+         }
+         ImGui::PopFont();
+         ImGui::PopStyleColor();
+-#endif
+     }
+ }
+ 
+@@ -1217,7 +1200,6 @@ void HudElements::vkbasalt(){
+ }
+ 
+ void HudElements::battery(){
+-#ifdef __linux__
+     if (Battery_Stats.batt_count > 0) {
+         if (HUDElements.params->enabled[OVERLAY_PARAM_ENABLED_battery]) {
+             ImguiNextColumnFirstItem();
+@@ -1293,7 +1275,6 @@ void HudElements::battery(){
+         }
+ 
+     }
+-#endif
+ }
+ 
+ void HudElements::gamescope_fsr(){
+@@ -1389,7 +1370,6 @@ void HudElements::gamescope_frame_timing(){
+ 
+ void HudElements::device_battery()
+ {
+-#ifdef __linux__
+     std::unique_lock<std::mutex> l(device_lock);
+     if (!HUDElements.params->device_battery.empty()) {
+         if (device_found) {
+@@ -1441,7 +1421,6 @@ void HudElements::device_battery()
+             }
+         }
+     }
+-#endif
+ }
+ 
+ void HudElements::frame_count(){
+@@ -1597,7 +1576,6 @@ void HudElements::graphs(){
+         HUDElements.min = 0;
+         HUDElements.TextColored(HUDElements.colors.engine, "%s", "VRAM");
+     }
+-#ifdef __linux__
+     if (value == "ram"){
+ 
+         for (auto& it : graph_data){
+@@ -1608,7 +1586,6 @@ void HudElements::graphs(){
+         HUDElements.min = 0;
+         HUDElements.TextColored(HUDElements.colors.engine, "%s", "RAM");
+     }
+-#endif
+     ImGui::PopFont();
+     ImGui::Dummy(ImVec2(0.0f,5.0f));
+     ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+@@ -1719,7 +1696,6 @@ void HudElements::present_mode() {
+ }
+ 
+ void HudElements::network() {
+-#ifdef __linux__
+     if (HUDElements.net && HUDElements.net->should_reset)
+         HUDElements.net.reset(new Net);
+ 
+@@ -1742,7 +1718,6 @@ void HudElements::network() {
+         HUDElements.TextColored(HUDElements.colors.text, "KB/s %s", ICON_FK_ARROW_DOWN);
+         ImGui::PopFont();
+     }
+-#endif
+ }
+ 
+ void HudElements::_display_session() {
+@@ -2131,7 +2106,6 @@ void HudElements::legacy_elements(const overlay_params* temp_params){
+ }
+ 
+ void HudElements::update_exec(){
+-#ifdef __linux__
+     // TODO: exec needs a rewrite using as using fork() is not safe in multithread.
+     // We should probably use posix_spawn instead.
+     // This currently stalls games using feral launcher.
+@@ -2148,7 +2122,6 @@ void HudElements::update_exec(){
+         if (ret.find("Bad system call") == std::string::npos)
+             item.ret = ret;
+     }
+-#endif
+ }
+ 
+ HudElements HUDElements;
+diff --git a/src/hud_elements.h b/src/hud_elements.h
+index 70deb51..3637d6c 100644
+--- a/src/hud_elements.h
++++ b/src/hud_elements.h
+@@ -64,9 +64,7 @@ class HudElements{
+ 
+         display_servers display_server = UNKNOWN;
+         std::unique_ptr<Net> net = nullptr;
+-#ifdef __linux__
+         std::unique_ptr<Shell> shell = nullptr;
+-#endif
+ 
+         void sort_elements(const std::pair<std::string, std::string>& option);
+         void legacy_elements(const overlay_params* temp_params);
+diff --git a/src/imgui_utils.h b/src/imgui_utils.h
+index f2797e4..9c7ce21 100644
+--- a/src/imgui_utils.h
++++ b/src/imgui_utils.h
+@@ -2,9 +2,7 @@
+ 
+ #include <imgui.h>
+ 
+-#ifdef __linux__
+ #include <implot.h>
+-#endif
+ 
+ struct imgui_contexts {
+     ImGuiContext* imgui = nullptr;
+diff --git a/src/logging.cpp b/src/logging.cpp
+index 9ef29ec..1ba0ccc 100644
+--- a/src/logging.cpp
++++ b/src/logging.cpp
+@@ -297,11 +297,9 @@ void Logger::stop_logging() {
+     SPDLOG_INFO("Can't write summary because m_log_files is empty");
+ 
+   clear_log_data();
+-#ifdef __linux__
+   control_client_check(get_params()->control, global_control_client, gpu.c_str());
+   const char * cmd = "LoggingFinished";
+   control_send(global_control_client, cmd, strlen(cmd), 0, 0);
+-#endif
+ }
+ 
+ void Logger::logging(){
+diff --git a/src/mesa/util/os_socket.c b/src/mesa/util/os_socket.c
+index 98ef013..a3e9d55 100644
+--- a/src/mesa/util/os_socket.c
++++ b/src/mesa/util/os_socket.c
+@@ -7,8 +7,6 @@
+ 
+ #include "os_socket.h"
+ 
+-#if defined(__linux__)
+-
+ #include <fcntl.h>
+ #include <poll.h>
+ #include <stddef.h>
+@@ -77,46 +75,4 @@ void
+ os_socket_close(int s)
+ {
+    close(s);
+-}
+-
+-#else
+-
+-int
+-os_socket_listen_abstract(const char *path, int count)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-int
+-os_socket_accept(int s)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-ssize_t
+-os_socket_recv(int socket, void *buffer, size_t length, int flags)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-ssize_t
+-os_socket_send(int socket, const void *buffer, size_t length, int flags)
+-{
+-   errno = -ENOSYS;
+-   return -1;
+-}
+-
+-void
+-os_socket_block(int s, bool block)
+-{
+-}
+-
+-void
+-os_socket_close(int s)
+-{
+-}
+-
+-#endif
++}
+\ No newline at end of file
+diff --git a/src/meson.build b/src/meson.build
+index e500c0c..fc9dc08 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -176,7 +176,7 @@ if is_unixy
+   endif
+ endif
+ 
+-link_args = cc.get_supported_link_arguments(['-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-Wl,--exclude-libs,ALL', '-lGL', '-static-libstdc++'])
++link_args = cc.get_supported_link_arguments(['-Wl,-Bsymbolic-functions', '-Wl,-z,relro', '-Wl,--exclude-libs,ALL', '-lGL', '-static-libstdc++', '-Wl,--undefined-version'])
+ # meson fails to check version-script so just force add
+ link_args += '-Wl,--version-script,@0@'.format(join_paths(meson.current_source_dir(), 'mangohud.version'))
+ 
+diff --git a/src/overlay.cpp b/src/overlay.cpp
+index 2e6f837..14c8f4d 100644
+--- a/src/overlay.cpp
++++ b/src/overlay.cpp
+@@ -29,10 +29,8 @@
+ #include "fex.h"
+ #include "ftrace.h"
+ 
+-#ifdef __linux__
+ #include <libgen.h>
+ #include <unistd.h>
+-#endif
+ 
+ namespace fs = ghc::filesystem;
+ using namespace std;
+@@ -107,21 +105,18 @@ void update_hw_info(const struct overlay_params& params, uint32_t vendorID)
+    if (real_params->enabled[OVERLAY_PARAM_ENABLED_cpu_stats] || logger->is_active()) {
+       cpuStats.UpdateCPUData();
+ 
+-#ifdef __linux__
+       if (real_params->enabled[OVERLAY_PARAM_ENABLED_core_load] || real_params->enabled[OVERLAY_PARAM_ENABLED_cpu_mhz] || logger->is_active())
+          cpuStats.UpdateCoreMhz();
+       if (real_params->enabled[OVERLAY_PARAM_ENABLED_cpu_temp] || logger->is_active() || real_params->enabled[OVERLAY_PARAM_ENABLED_graphs])
+          cpuStats.UpdateCpuTemp();
+       if (real_params->enabled[OVERLAY_PARAM_ENABLED_cpu_power] || logger->is_active())
+          cpuStats.UpdateCpuPower();
+-#endif
+    }
+    if (real_params->enabled[OVERLAY_PARAM_ENABLED_gpu_stats] || logger->is_active()) {
+       if (gpus)
+          gpus->get_metrics();
+    }
+ 
+-#ifdef __linux__
+    if (real_params->enabled[OVERLAY_PARAM_ENABLED_battery])
+       Battery_Stats.update();
+    if (!real_params->device_battery.empty()) {
+@@ -138,7 +133,6 @@ void update_hw_info(const struct overlay_params& params, uint32_t vendorID)
+       update_procmem();
+    if (real_params->enabled[OVERLAY_PARAM_ENABLED_io_read] || real_params->enabled[OVERLAY_PARAM_ENABLED_io_write])
+       getIoStats(g_io_stats);
+-#endif
+    if (gpus && gpus->active_gpu()) {
+       currentLogData.gpu_load = gpus->active_gpu()->metrics.load;
+       currentLogData.gpu_temp = gpus->active_gpu()->metrics.temp;
+@@ -147,11 +141,9 @@ void update_hw_info(const struct overlay_params& params, uint32_t vendorID)
+       currentLogData.gpu_vram_used = gpus->active_gpu()->metrics.sys_vram_used;
+       currentLogData.gpu_power = gpus->active_gpu()->metrics.powerUsage;
+    }
+-#ifdef __linux__
+    currentLogData.ram_used = memused;
+    currentLogData.swap_used = swapused;
+    currentLogData.process_rss = proc_mem_resident / float((2 << 29)); // GiB, consistent w/ other mem stats
+-#endif
+ 
+    currentLogData.cpu_load = cpuStats.GetCPUDataTotal().percent;
+    currentLogData.cpu_temp = cpuStats.GetCPUDataTotal().temp;
+@@ -241,10 +233,8 @@ void update_hud_info_with_frametime(struct swapchain_stats& sw_stats, const stru
+       frametime_data.push_back(frametime_ms);
+       frametime_data.erase(frametime_data.begin());
+    }
+-#ifdef __linux__
+    if (gpus)
+       gpus->update_throttling();
+-#endif
+ #ifdef HAVE_FEX
+    fex::update_fex_stats();
+ #endif
+@@ -265,9 +255,7 @@ void update_hud_info_with_frametime(struct swapchain_stats& sw_stats, const stru
+       hw_update_thread->update(&params, vendorID);
+ 
+       if (fpsmetrics) fpsmetrics->update_thread();
+-#ifdef __linux__
+       if (HUDElements.net) HUDElements.net->update();
+-#endif
+ 
+       sw_stats.fps = 1000000000.0 * sw_stats.n_frames_since_update / elapsed;
+ 
+@@ -745,13 +733,11 @@ void render_imgui(swapchain_stats& data, struct overlay_params& params, ImVec2&
+ 
+ void init_cpu_stats(overlay_params& params)
+ {
+-#ifdef __linux__
+    auto& enabled = params.enabled;
+    enabled[OVERLAY_PARAM_ENABLED_cpu_stats] = cpuStats.Init()
+                            && enabled[OVERLAY_PARAM_ENABLED_cpu_stats];
+    enabled[OVERLAY_PARAM_ENABLED_cpu_temp] = cpuStats.GetCpuFile()
+                            && enabled[OVERLAY_PARAM_ENABLED_cpu_temp];
+-#endif
+ }
+ 
+ struct pci_bus {
+@@ -762,14 +748,13 @@ struct pci_bus {
+ };
+ 
+ void init_system_info(){
+-   #ifdef __linux__
+       const char* ld_preload = getenv("LD_PRELOAD");
+       if (ld_preload)
+          unsetenv("LD_PRELOAD");
+ 
+-      ram =  exec("sed -n 's/^MemTotal: *\\([0-9]*\\).*/\\1/p' /proc/meminfo");
++      ram =  exec("sysctl hw.physmem | sed -n 's/^hw.physmem: *\\([0-9]*\\).*/\\1/p'");
+       trim(ram);
+-      cpu =  exec("sed -n 's/^model name.*: \\(.*\\)/\\1/p' /proc/cpuinfo | sed 's/([^)]*)//g' | tail -n1");
++      cpu =  exec("sysctl hw.model | sed -n 's/^hw.model.*: \\(.*\\)/\\1/p' | sed 's/([^)]*)//g'");
+       trim(cpu);
+       kernel = exec("uname -r");
+       trim(kernel);
+@@ -851,11 +836,9 @@ void init_system_info(){
+       SPDLOG_DEBUG("Os:{}", os);
+       SPDLOG_DEBUG("Driver:{}", driver);
+       SPDLOG_DEBUG("CPU Scheduler:{}", cpusched);
+-#endif
+ }
+ 
+ void check_for_vkbasalt_and_gamemode() {
+-#ifdef __linux__
+    static bool checked = false;
+    if (checked)
+       return;
+@@ -867,7 +850,6 @@ void check_for_vkbasalt_and_gamemode() {
+       HUDElements.vkbasalt_bol = true;
+ 
+    checked = true;
+-#endif
+ }
+ 
+ void update_fan(){
+diff --git a/src/overlay_params.cpp b/src/overlay_params.cpp
+index e90fbe0..92d8841 100644
+--- a/src/overlay_params.cpp
++++ b/src/overlay_params.cpp
+@@ -6,10 +6,8 @@
+ #include <string.h>
+ #include <stdlib.h>
+ #include <errno.h>
+-#ifdef __linux__
+ #include <wordexp.h>
+ #include <unistd.h>
+-#endif
+ #include "imgui.h"
+ #include <iostream>
+ #include <string>
+diff --git a/src/real_dlsym.c b/src/real_dlsym.c
+index 3f1abd9..c806662 100644
+--- a/src/real_dlsym.c
++++ b/src/real_dlsym.c
+@@ -26,6 +26,7 @@ static void get_real_functions()
+ #if defined(__GLIBC__)
+         "*libdl.so*",
+ #endif
++        "*/libexec/ld-elf.so.*", // for functions to resolve properly, thank you Gemini 3 Pro Preview and Claude 4.5 Sonnet.
+         "*libc.so*",
+         "*libc.*.so*",
+         "*ld-musl-*.so*",
+diff --git a/src/shell.h b/src/shell.h
+index f2f14ed..1a67ea6 100644
+--- a/src/shell.h
++++ b/src/shell.h
+@@ -2,9 +2,7 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ #include <cstring>
+-#ifdef __linux__
+ #include <sys/wait.h>
+-#endif
+ #include <string>
+ #include <memory>
+ #include <sys/stat.h>
+@@ -18,12 +16,10 @@ private:
+     struct stat stat_buffer;
+     bool runtime = false;
+ 
+-#ifdef __linux__
+     void setNonBlocking(int fd) {
+         int flags = fcntl(fd, F_GETFL, 0);
+         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+     }
+-#endif
+ 
+     void writeCommand(std::string command);
+     std::string readOutput();
+diff --git a/src/vulkan.cpp b/src/vulkan.cpp
+index ffadf25..299cfec 100644
+--- a/src/vulkan.cpp
++++ b/src/vulkan.cpp
+@@ -56,10 +56,8 @@
+ #endif
+ #include "real_dlsym.h"
+ #include "file_utils.h"
+-#ifdef __linux__
+ #include <dlfcn.h>
+ #include "implot.h"
+-#endif
+ #include "imgui_utils.h"
+ #include "fps_limiter.h"
+ 
+@@ -472,12 +470,10 @@ static void snapshot_swapchain_frame(struct swapchain_data *data)
+    struct instance_data *instance_data = device_data->instance;
+    update_hud_info(data->sw_stats, instance_data->params, device_data->properties.vendorID);
+    check_keybinds(instance_data->params);
+-#ifdef __linux__
+    if (instance_data->params.control >= 0) {
+       control_client_check(instance_data->params.control, instance_data->control_client, gpu.c_str());
+       process_control_socket(instance_data->control_client, instance_data->params);
+    }
+-#endif
+ }
+ 
+ static void compute_swapchain_display(struct swapchain_data *data)
+@@ -1634,9 +1630,7 @@ static VkResult overlay_CreateSwapchainKHR(
+ 
+    std::string deviceName = prop.deviceName;
+    if (!is_blacklisted()) {
+-#ifdef __linux__
+       swapchain_data->sw_stats.gpuName = remove_parentheses(deviceName);
+-#endif
+    }
+    swapchain_data->sw_stats.driverName = driverProps.driverInfo;
+ 
+@@ -1898,10 +1892,8 @@ static VkResult overlay_CreateDevice(
+ 
+    if (!is_blacklisted()) {
+       device_map_queues(device_data, pCreateInfo);
+-#ifdef __linux__
+       gpu = device_data->properties.deviceName;
+       SPDLOG_DEBUG("gpu: {}", gpu);
+-#endif
+    }
+ 
+    return result;
+@@ -1999,11 +1991,9 @@ static VkResult overlay_CreateInstance(
+    }
+ 
+    if (!is_blacklisted()) {
+-#ifdef __linux__
+       init_system_info();
+       instance_data->notifier.params = &instance_data->params;
+       start_notifier(instance_data->notifier);
+-#endif
+ 
+       init_cpu_stats(instance_data->params);
+ 
+@@ -2066,10 +2056,8 @@ static void overlay_DestroyInstance(
+    struct instance_data *instance_data = FIND(struct instance_data, instance);
+    instance_data_map_physical_devices(instance_data, false);
+    instance_data->vtable.DestroyInstance(instance, pAllocator);
+-#ifdef __linux__
+    if (!is_blacklisted())
+       stop_notifier(instance_data->notifier);
+-#endif
+    destroy_instance_data(instance_data);
+ }
+ 
+diff --git a/src/winesync.h b/src/winesync.h
+index 06e1c3d..6208098 100644
+--- a/src/winesync.h
++++ b/src/winesync.h
+@@ -21,7 +21,6 @@ class WineSync {
+         bool inside_wine = true;
+     public:
+         void determine_sync_variant() {
+-#ifdef __linux__
+             // check that's were inside wine
+             std::string wineProcess = get_exe_path();
+             auto n = wineProcess.find_last_of('/');
+@@ -39,7 +38,6 @@ class WineSync {
+             }
+ 
+             SPDLOG_DEBUG("Wine sync method: {}", methods.at(method));
+-#endif
+         }
+ 
+         bool valid() {
