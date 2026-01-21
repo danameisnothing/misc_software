@@ -49,17 +49,18 @@ index 2235476..02b4dd0 100644
      io.IniFilename = NULL;
      ImGui::StyleColorsDark();
 diff --git a/src/cpu.cpp b/src/cpu.cpp
-index f46faba..f22bc03 100644
+index f46faba..1583476 100644
 --- a/src/cpu.cpp
 +++ b/src/cpu.cpp
-@@ -1,4 +1,6 @@
+@@ -1,4 +1,7 @@
  #include "cpu.h"
++#include <cinttypes>
 +#include <cstdio>
 +#include <cstdlib>
  #include <memory>
  #include <string>
  #include <iostream>
-@@ -35,6 +37,7 @@
+@@ -35,6 +38,7 @@
  #endif
  
  #include "file_utils.h"
@@ -67,7 +68,7 @@ index f46faba..f22bc03 100644
  
  static void calculateCPUData(CPUData& cpuData,
      unsigned long long int usertime,
-@@ -114,6 +117,22 @@ CPUStats::~CPUStats()
+@@ -114,6 +118,22 @@ CPUStats::~CPUStats()
      }
  }
  
@@ -90,7 +91,7 @@ index f46faba..f22bc03 100644
  bool CPUStats::Init()
  {
      if (m_inited)
-@@ -124,7 +143,19 @@ bool CPUStats::Init()
+@@ -124,7 +144,19 @@ bool CPUStats::Init()
      bool first = true;
      m_cpuData.clear();
  
@@ -111,7 +112,7 @@ index f46faba..f22bc03 100644
          SPDLOG_ERROR("Failed to opening " PROCSTATFILE);
          return false;
      }
-@@ -157,7 +188,7 @@ bool CPUStats::Init()
+@@ -157,7 +189,7 @@ bool CPUStats::Init()
              sscanf(line.c_str(), "btime %lld\n", &m_boottime);
              break;
          }
@@ -120,7 +121,7 @@ index f46faba..f22bc03 100644
  
  #ifndef TEST_ONLY
      if (get_params()->enabled[OVERLAY_PARAM_ENABLED_core_type])
-@@ -178,14 +209,41 @@ bool CPUStats::Reinit()
+@@ -178,14 +210,41 @@ bool CPUStats::Reinit()
  bool CPUStats::UpdateCPUData()
  {
      unsigned long long int usertime, nicetime, systemtime, idletime;
@@ -164,7 +165,7 @@ index f46faba..f22bc03 100644
      std::ifstream file (PROCSTATFILE);
      bool ret = false;
  
-@@ -211,7 +269,7 @@ bool CPUStats::UpdateCPUData()
+@@ -211,7 +270,7 @@ bool CPUStats::UpdateCPUData()
                  return false;
              }
  
@@ -173,7 +174,7 @@ index f46faba..f22bc03 100644
                  SPDLOG_DEBUG("Cpu id '{}' is out of bounds", cpuid);
                  return false;
              }
-@@ -229,10 +287,10 @@ bool CPUStats::UpdateCPUData()
+@@ -229,10 +288,10 @@ bool CPUStats::UpdateCPUData()
          } else {
              break;
          }
@@ -187,7 +188,71 @@ index f46faba..f22bc03 100644
  
      m_cpuPeriod = (double)m_cpuData[0].totalPeriod / m_cpuData.size();
      m_updatedCPUs = true;
-@@ -571,6 +629,7 @@ bool CPUStats::GetCpuFile() {
+@@ -241,7 +300,7 @@ bool CPUStats::UpdateCPUData()
+ 
+ bool CPUStats::UpdateCoreMhz() {
+     m_coreMhz.clear();
+-    FILE *fp;
++    /*FILE *fp;
+     static bool scaling_freq = true;
+     if (scaling_freq){
+         for (auto& cpu : m_cpuData){
+@@ -270,6 +329,15 @@ bool CPUStats::UpdateCoreMhz() {
+                 i++;
+             }
+         }
++    }*/
++    // FIXME: worked enough I guess?
++    // https://www.cyberciti.biz/faq/howto-find-out-freebsd-cpuinfo/
++    for (auto& cpu : m_cpuData) {
++        cpu.mhz = 0;
++
++        std::string res = exec("sysctl hw.clockrate | sed -n 's/^hw.clockrate: *\\([0-9]*\\).*/\\1/p'");
++        trim(res);
++        cpu.mhz = std::stoi(res);
+     }
+ 
+     m_cpuDataTotal.cpu_mhz = 0;
+@@ -281,7 +349,7 @@ bool CPUStats::UpdateCoreMhz() {
+ }
+ 
+ bool CPUStats::ReadcpuTempFile(int& temp) {
+-	if (!m_cpuTempFile)
++	/*if (!m_cpuTempFile)
+ 		return false;
+ 
+ 	rewind(m_cpuTempFile);
+@@ -289,7 +357,19 @@ bool CPUStats::ReadcpuTempFile(int& temp) {
+ 	bool ret = (fscanf(m_cpuTempFile, "%d", &temp) == 1);
+ 	temp = temp / 1000;
+ 
+-	return ret;
++	return ret;*/
++    // this function doesn't pipe stderr by default?
++    std::string cpu_0_temp = exec("sysctl dev.cpu.0.temperature 2>&1");
++    // https://stackoverflow.com/a/2340309
++    if (cpu_0_temp.find("sysctl: unknown oid") != std::string::npos) {
++        SPDLOG_ERROR("*BSD: can't fetch first CPU thread temperature, make sure kernel modules for exposing CPU temps are loaded (coretemp for Intel, amdtemp for AMD)");
++        return false;
++    }
++
++    // this string has a trailing "C" in it, e.g. 46.0C
++    std::string first_temp_c = split(cpu_0_temp, ' ').at(1);
++    temp = std::stoi(first_temp_c.substr(0, first_temp_c.length() - 1));
++    return true;
+ }
+ 
+ bool CPUStats::UpdateCpuTemp() {
+@@ -562,7 +642,7 @@ bool CPUStats::GetCpuFile() {
+     if (m_cpuTempFile)
+         return true;
+ 
+-    std::string name, path, input;
++    /*std::string name, path, input;
+     std::string hwmon = "/sys/class/hwmon/";
+     std::smatch match;
+ 
+@@ -571,6 +651,7 @@ bool CPUStats::GetCpuFile() {
          path = hwmon + dir;
          name = read_line(path + "/name");
          SPDLOG_DEBUG("hwmon: sensor name: {}", name);
@@ -195,15 +260,15 @@ index f46faba..f22bc03 100644
  
          std::map<std::string, std::string> custom_sensor = get_params()->cpu_custom_temp_sensor;
  
-@@ -627,7 +686,7 @@ bool CPUStats::GetCpuFile() {
-             SPDLOG_DEBUG("check_thermal_zones: {}", ex.what());
-         }
+@@ -634,7 +715,7 @@ bool CPUStats::GetCpuFile() {
      }
--
-+std::cout << "input_empty : " << input.empty() << "input : " << input << "fileexist : " << !file_exists(input) << "\n";
-     if (input.empty() || !file_exists(input)) {
-         SPDLOG_ERROR("Could not find cpu temp sensor location");
-         return false;
+ 
+     SPDLOG_INFO("hwmon: using input: {}", input);
+-    m_cpuTempFile = fopen(input.c_str(), "r");
++    m_cpuTempFile = fopen(input.c_str(), "r");*/
+ 
+     return true;
+ }
 diff --git a/src/file_utils.cpp b/src/file_utils.cpp
 index 80e3031..1fe2467 100644
 --- a/src/file_utils.cpp
@@ -246,18 +311,30 @@ index 2ef688d..01dc582 100644
  #include "gl_hud.h"
  #include "file_utils.h"
 diff --git a/src/gpu.cpp b/src/gpu.cpp
-index 3c00a69..b1313c4 100644
+index 3c00a69..e87a3fc 100644
 --- a/src/gpu.cpp
 +++ b/src/gpu.cpp
-@@ -8,7 +8,7 @@ GPUS::GPUS(const overlay_params* early_params) {
+@@ -4,16 +4,16 @@
+ 
+ namespace fs = ghc::filesystem;
+ 
++// TODO: GPU!
+ GPUS::GPUS(const overlay_params* early_params) {
      std::set<std::string> gpu_entries;
      auto params = early_params ? early_params : get_params().get();
  
 -    for (const auto& entry : fs::directory_iterator("/sys/class/drm")) {
+-        if (!entry.is_directory())
+-            continue;
 +    for (const auto& entry : fs::directory_iterator("/dev/dri")) {
-         if (!entry.is_directory())
-             continue;
++        /*if (!entry.is_directory())
++            continue;*/
  
+         std::string node_name = entry.path().filename().string();
+-
+         // Check if the directory is a render node (e.g., renderD128, renderD129, etc.)
+         if (node_name.find("renderD") == 0 && node_name.length() > 7) {
+             // Ensure the rest of the string after "renderD" is numeric
 @@ -48,7 +48,7 @@ GPUS::GPUS(const overlay_params* early_params) {
              }
          }
@@ -267,6 +344,43 @@ index 3c00a69..b1313c4 100644
          std::string device_address = get_pci_device_address(path);  // Store the result
          const char* pci_dev = device_address.c_str();
  
+@@ -114,8 +114,9 @@ GPUS::GPUS(const overlay_params* early_params) {
+ 
+ }
+ 
++// TODO:
+ std::string GPUS::get_driver(const std::string& node) {
+-    std::string path = "/sys/class/drm/" + node + "/device/driver";
++    /*std::string path = "/sys/class/drm/" + node + "/device/driver";
+ 
+     if (!fs::exists(path)) {
+         SPDLOG_ERROR("{} doesn't exist", path);
+@@ -130,12 +131,13 @@ std::string GPUS::get_driver(const std::string& node) {
+     std::string driver = fs::read_symlink(path).string();
+     driver = driver.substr(driver.rfind("/") + 1);
+ 
+-    return driver;
++    return driver;*/
++    return "nvidia";
+ }
+ 
+ std::string GPUS::get_pci_device_address(const std::string& drm_card_path) {
+     // /sys/class/drm/renderD128/device/subsystem -> /sys/bus/pci
+-    auto subsystem = fs::canonical(drm_card_path + "/device/subsystem").string();
++    /*auto subsystem = fs::canonical(drm_card_path + "/device/subsystem").string();
+     auto idx = subsystem.rfind("/") + 1; // /sys/bus/pci
+                                          //         ^
+                                          //         |- find this guy
+@@ -148,7 +150,8 @@ std::string GPUS::get_pci_device_address(const std::string& drm_card_path) {
+                                    //         ^
+                                    //         |- find this guy
+ 
+-    return pci_addr.substr(idx); // 0000:03:00.0
++    return pci_addr.substr(idx); // 0000:03:00.0*/
++    return "";
+ }
+ 
+ int GPU::index_in_selected_gpus() {
 diff --git a/src/hud_elements.cpp b/src/hud_elements.cpp
 index 3cac5af..b805c5f 100644
 --- a/src/hud_elements.cpp
