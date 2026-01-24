@@ -49,22 +49,32 @@ index 2235476..02b4dd0 100644
      io.IniFilename = NULL;
      ImGui::StyleColorsDark();
 diff --git a/src/cpu.cpp b/src/cpu.cpp
-index f46faba..b364612 100644
+index f46faba..74ed840 100644
 --- a/src/cpu.cpp
 +++ b/src/cpu.cpp
-@@ -1,4 +1,7 @@
+@@ -1,4 +1,8 @@
  #include "cpu.h"
 +#include <cinttypes>
 +#include <cstdio>
 +#include <cstdlib>
++#include <filesystem>
  #include <memory>
  #include <string>
  #include <iostream>
-@@ -35,6 +38,24 @@
+@@ -10,6 +14,7 @@
+ #include <regex>
+ #include <inttypes.h>
+ #include <spdlog/spdlog.h>
++#include <sys/pmc.h>
+ #include "string_utils.h"
+ #include "gpu.h"
+ #include "hud_elements.h"
+@@ -35,6 +40,25 @@
  #endif
  
  #include "file_utils.h"
 +#include <logging.h>
++#include <pmc.h>
 +
 +// from https://medium.com/@ryan_forrester_/splitting-strings-in-c-a-complete-guide-cf162837f4ba
 +// do i care that there is another function I declared that is identical to this one, just with a different name? no.
@@ -85,7 +95,7 @@ index f46faba..b364612 100644
  
  static void calculateCPUData(CPUData& cpuData,
      unsigned long long int usertime,
-@@ -121,10 +142,22 @@ bool CPUStats::Init()
+@@ -121,10 +145,22 @@ bool CPUStats::Init()
  
      std::string line;
      std::ifstream file (PROCSTATFILE);
@@ -110,7 +120,7 @@ index f46faba..b364612 100644
          SPDLOG_ERROR("Failed to opening " PROCSTATFILE);
          return false;
      }
-@@ -157,7 +190,7 @@ bool CPUStats::Init()
+@@ -157,7 +193,7 @@ bool CPUStats::Init()
              sscanf(line.c_str(), "btime %lld\n", &m_boottime);
              break;
          }
@@ -119,7 +129,7 @@ index f46faba..b364612 100644
  
  #ifndef TEST_ONLY
      if (get_params()->enabled[OVERLAY_PARAM_ENABLED_core_type])
-@@ -178,14 +211,41 @@ bool CPUStats::Reinit()
+@@ -178,14 +214,41 @@ bool CPUStats::Reinit()
  bool CPUStats::UpdateCPUData()
  {
      unsigned long long int usertime, nicetime, systemtime, idletime;
@@ -165,7 +175,7 @@ index f46faba..b364612 100644
      std::ifstream file (PROCSTATFILE);
      bool ret = false;
  
-@@ -211,7 +271,7 @@ bool CPUStats::UpdateCPUData()
+@@ -211,7 +274,7 @@ bool CPUStats::UpdateCPUData()
                  return false;
              }
  
@@ -174,7 +184,7 @@ index f46faba..b364612 100644
                  SPDLOG_DEBUG("Cpu id '{}' is out of bounds", cpuid);
                  return false;
              }
-@@ -229,10 +289,10 @@ bool CPUStats::UpdateCPUData()
+@@ -229,10 +292,10 @@ bool CPUStats::UpdateCPUData()
          } else {
              break;
          }
@@ -188,7 +198,7 @@ index f46faba..b364612 100644
  
      m_cpuPeriod = (double)m_cpuData[0].totalPeriod / m_cpuData.size();
      m_updatedCPUs = true;
-@@ -241,7 +301,7 @@ bool CPUStats::UpdateCPUData()
+@@ -241,7 +304,7 @@ bool CPUStats::UpdateCPUData()
  
  bool CPUStats::UpdateCoreMhz() {
      m_coreMhz.clear();
@@ -197,23 +207,68 @@ index f46faba..b364612 100644
      static bool scaling_freq = true;
      if (scaling_freq){
          for (auto& cpu : m_cpuData){
-@@ -270,6 +330,15 @@ bool CPUStats::UpdateCoreMhz() {
+@@ -270,6 +333,60 @@ bool CPUStats::UpdateCoreMhz() {
                  i++;
              }
          }
 +    }*/
 +    // FIXME: change this to a more accurate measurement method. sysctl hw.clockrate doesn't reflect real-time clock speed, and it doesn't even account for boost frequencies!
-+    // https://www.cyberciti.biz/faq/howto-find-out-freebsd-cpuinfo/
-+    for (auto& cpu : m_cpuData) {
-+        cpu.mhz = 0;
++    // honestly, this one is pretty jank, but this is the theme of this patch, so we ball
++    bool use_better_method = false;
++    const char* tb_file = getenv("MANGOHUD_BSD_TURBOSTAT_FILE");
++    if (tb_file == NULL) {
++        SPDLOG_WARN("*BSD: MANGOHUD_BSD_TURBOSTAT_FILE environment variable not specified, using sub-par method for fetching CPU frequency!");
++    } else if (exec("turbostat").find("not found") != std::string::npos) {
++        SPDLOG_ERROR("*BSD: Cannot use turbostat method for fetching CPU frequecy, but turbostat not installed, using sub-par method for fetching CPU frequency!");
++    } else if (!std::filesystem::is_regular_file(tb_file)) {
++        SPDLOG_ERROR("*BSD: Tried to use turbostat method for fetching CPU frequecy, but the path pointed via MANGOHUD_BSD_TURBOSTAT_FILE is not a file ({}). Using sub-par method for fetching CPU frequency!", tb_file);
++    } else {
++        SPDLOG_INFO("*BSD: You shall remove the file after use, or put it on /tmp");
++        use_better_method = true;
++    }
 +
-+        std::string res = exec("sysctl hw.clockrate | sed -n 's/^hw.clockrate: *\\([0-9]*\\).*/\\1/p'");
-+        trim(res);
-+        cpu.mhz = std::stoi(res);
++    if (!use_better_method) {
++        std::string cmd = "tmp_file=\"$(mktemp /tmp/turbostat_mangohud-XXXXXX)\"; echo \"File is $tmp_file\"; sudo turbostat -q -i 0.25 --out \"$tmp_file\" --show Bzy_MHz";
++        SPDLOG_INFO("*BSD: Command example to use for better method : `{}`. Depends on inotify-tools", cmd);
++
++        // https://www.cyberciti.biz/faq/howto-find-out-freebsd-cpuinfo/
++        for (auto& cpu : m_cpuData) {
++            std::string res = exec("sysctl hw.clockrate | sed -n 's/^hw.clockrate: *\\([0-9]*\\).*/\\1/p'");
++            trim(res);
++            cpu.mhz = std::stoi(res);
++        }
++    } else {
++        std::string line;
++        std::ifstream file (tb_file);
++        if (file.is_open()) {
++            int cpuidx = 0;
++            bool first = true;
++            do {
++                if (!std::getline(file, line)) {
++                    if (cpuidx != 0) break;
++
++                    SPDLOG_ERROR("*BSD: Error while reading {}, setting CPU MHz to 0 as fallback!", tb_file);
++                    for (auto& cpu : m_cpuData) cpu.mhz = 0;
++                    break;
++                } else if (line == "Bzy_MHz") continue;
++                else {
++                    // first value is the average?
++                    if (first) {
++                        first = false;
++                        continue;
++                    }
++
++                    m_cpuData.at(cpuidx++).mhz = std::stoi(line);
++                }
++            } while (true);
++        } else {
++            SPDLOG_ERROR("*BSD: Failed to open {}, WTF? we just checked this earlier?", tb_file);
++            for (auto& cpu : m_cpuData) cpu.mhz = 0;
++        }
      }
  
      m_cpuDataTotal.cpu_mhz = 0;
-@@ -281,7 +350,7 @@ bool CPUStats::UpdateCoreMhz() {
+@@ -281,7 +398,7 @@ bool CPUStats::UpdateCoreMhz() {
  }
  
  bool CPUStats::ReadcpuTempFile(int& temp) {
@@ -222,7 +277,7 @@ index f46faba..b364612 100644
  		return false;
  
  	rewind(m_cpuTempFile);
-@@ -289,7 +358,19 @@ bool CPUStats::ReadcpuTempFile(int& temp) {
+@@ -289,7 +406,19 @@ bool CPUStats::ReadcpuTempFile(int& temp) {
  	bool ret = (fscanf(m_cpuTempFile, "%d", &temp) == 1);
  	temp = temp / 1000;
  
@@ -243,7 +298,7 @@ index f46faba..b364612 100644
  }
  
  bool CPUStats::UpdateCpuTemp() {
-@@ -562,7 +643,7 @@ bool CPUStats::GetCpuFile() {
+@@ -562,7 +691,7 @@ bool CPUStats::GetCpuFile() {
      if (m_cpuTempFile)
          return true;
  
@@ -252,7 +307,7 @@ index f46faba..b364612 100644
      std::string hwmon = "/sys/class/hwmon/";
      std::smatch match;
  
-@@ -571,6 +652,7 @@ bool CPUStats::GetCpuFile() {
+@@ -571,6 +700,7 @@ bool CPUStats::GetCpuFile() {
          path = hwmon + dir;
          name = read_line(path + "/name");
          SPDLOG_DEBUG("hwmon: sensor name: {}", name);
@@ -260,7 +315,7 @@ index f46faba..b364612 100644
  
          std::map<std::string, std::string> custom_sensor = get_params()->cpu_custom_temp_sensor;
  
-@@ -634,7 +716,7 @@ bool CPUStats::GetCpuFile() {
+@@ -634,7 +764,7 @@ bool CPUStats::GetCpuFile() {
      }
  
      SPDLOG_INFO("hwmon: using input: {}", input);
