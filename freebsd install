@@ -1,0 +1,403 @@
+FreeBSD setup :
+forums.freebsd.org/threads/is-installing-nvidia-drivers-with-pkg-install-nvidia-driver-officially-best-practice.86390/
+https://docs.freebsd.org/en/books/handbook/bsdinstall/#using-bsdinstall
+https://www.youtube.com/watch?v=XjPha2bWvxs
+https://www.reddit.com/r/bash/comments/c09nbm/sorry_when_trying_to_su/
+https://docs.freebsd.org/en/books/handbook/x11/#x-install (video group pm)
+
+FreeBSD Nvidia startx can not run in framebuffer mode error :
+https://gitlab.com/alfix/kde-installer-dialogs/-/blob/main/desktop
+https://www.reddit.com/r/freebsd/comments/6ven4l/startx_fails_with_cannot_run_in_framebuffer_mode/
+https://forums.freebsd.org/threads/startx-fails-with-no-screens-found.90472/
+https://forums.freebsd.org/threads/startx-can-not-run-in-framebuffer-mode-please-specify-busids-and-x-server-error.75422/
+https://www.google.com/search?q=startx+cannot+run+in+framebuffer+mode+for+NVidia+FreeBSD
+Google's AI Overview thing :
+```
+The "Cannot run in framebuffer mode" error with startx on FreeBSD for NVIDIA usually means the proper NVIDIA kernel module isn't loaded or Xorg can't find your graphics card; you need to install nvidia-driver, load nvidia and nvidia-modeset kernel modules (e.g., via sysrc kld_list+=nvidia & sysrc kld_list+=nvidia-modeset), ensure your user is in the video group, and check /var/log/Xorg.0.log for details, possibly requiring a manual xorg.conf.d snippet for the NVIDIA driver.
+Key Steps to Resolve
+
+    Install NVIDIA Driver:
+        pkg install nvidia-driver FreeBSD forums for xorg.
+    Load Kernel Modules:
+        Add these to /etc/rc.conf:
+        bash
+
+    kld_list+="nvidia nvidia-modeset"
+
+    Or use sysrc commands:
+    sysrc kld_list+=nvidia
+    sysrc kld_list+=nvidia-modeset FreeBSD forums for xorg.
+    Reboot or use kldload nvidia to test immediately.
+
+Check User Permissions:
+
+    Ensure your user is in the video group:
+    pw group mod video -m your_username FreeBSD forums for startx.
+
+Create xorg.conf.d Snippet (if needed):
+
+    Create /usr/local/etc/X11/xorg.conf.d/driver-nvidia.conf:
+
+    Section "Device"
+        Identifier "Card0"
+        Driver "nvidia"
+    EndSection
+
+    FreeBSD forums for startx. (here it is : https://forums.freebsd.org/threads/cannot-run-in-framebuffer-mode-please-specify-busids.74546/)
+
+Check Logs:
+
+    cat /var/log/Xorg.0.log (or Xorg.1.log) for specific driver/module errors.
+
+Common Causes & Solutions
+
+    Missing Kernel Module: The error often means nvidia.ko or nvidia-modeset.ko aren't loaded at boot.
+    Incorrect Driver: Using drm-kmod (for Intel/AMD) instead of the NVIDIA driver.
+    BusID Conflict: If you have multiple GPUs, you might need to explicitly set busIDs in xorg.conf if auto-detection fails.
+    Outdated Packages: Ensure your installed drm-kmod or nvidia-driver matches your FreeBSD kernel version.
+```
+
+FreeBSD su on regular user :
+https://www.google.com/search?q=FreeBSD+allow+user+account+to+elevate+to+root+with+su+with+wheel
+https://forums.freebsd.org/threads/su-sorry.5248/
+
+nvtop FreeBSD :
+https://forums.freebsd.org/threads/nvidia-gpu-monitoring-tools.89738/
+https://github.com/Syllo/nvtop/issues/159
+
+speaker "pop" on kernel boot :
+https://forums.freebsd.org/threads/loud-cracking-sound-when-the-sound-driver-loads.74526/ (identify your popping device)
+https://forums.freebsd.org/threads/very-load-sound-in-headphones-during-boot.82431/ (put your device index in place of "7" on /boot/loader.conf (e.g. hint.pcm.3.vol="0"))
+
+misc :
+https://docs.freebsd.org/en/books/handbook/wayland/
+https://forums.freebsd.org/threads/to-wayland-or-not-to-wayland.95414/
+https://forums.freebsd.org/threads/every-wayland-compositor-shows-a-black-screen.98675/
+https://www.reddit.com/r/freebsd/comments/1ekcczi/very_low_volume_in_freebsd_150current/
+https://docs.freebsd.org/en/books/handbook/ports/
+https://docs.freebsd.org/en/books/handbook/basics/#mount-unmount
+https://docs.freebsd.org/en/books/handbook/zfs/index.html
+https://www.youtube.com/watch?v=0Er8ipibeNM
+https://www.youtube.com/watch?v=2OZtnqK3iMU
+https://superuser.com/questions/1740564/how-do-i-know-which-nvidia-driver-to-install-for-freebsd
+https://forums.freebsd.org/threads/trying-to-run-kde-6-plasma-with-wayland.93951/
+https://www.google.com/search?q=FreeBSD+remove+a+wrong+entry+on+rc.conf (sysrc -x my_var="YES")
+https://www.google.com/search?q=FreeBSD+Wayland+blank+screen
+https://www.google.com/search?q=Freebsd+show+kld
+https://www.google.com/search?q=startx+no+screens+found
+
+don't know how to do wayland just yet though...
+
+
+
+desktop-installer broke this setup by startx complaining about no screens found. on /etc/X11/xorg.conf.d/ there may be config files named 20-cursors and 30-tap. rm /etc/X11/xorg.conf.d/* them, and startx shall work again.
+
+
+
+
+blueteeth :
+invaluable sources :
+https://jrgsystems.com/posts/2022-08-20-how-i-configure-bluetooth-headphones-on-freebsd-13-1/ (it linked https://www.freebsd.org/releases/15.0R/relnotes/#multimedia, which told me to pkg install virtual_oss_bluetooth, and also documented steps)
+https://forums.freebsd.org/threads/airbuds-with-bluetooth-ac7006f4-driver.98496/
+
+other sources :
+https://docs.freebsd.org/en/books/handbook/advanced-networking/#network-bluetooth
+https://forums.freebsd.org/threads/setting-up-bluetooth.84706/
+https://forums.freebsd.org/threads/using-bluetooth-audio-devices-speaker-headphones-earbuds-with-freebsd.78992/
+https://forums.ghostbsd.org/d/117-bluetooth-set-up-guide
+https://www.youtube.com/watch?v=nNQ1-M23HJI
+https://forums.freebsd.org/threads/bluetooth-and-freebsd.78341/
+https://siberoloji.com/how-to-set-up-bluetooth-support-on-freebsd-operating-system/
+https://www.google.com/search?q=%2Fetc%2Frc.d%2Fbluetooth%3A+WARNING%3A+Reset+failed%2C+retrying.
+https://www.google.com/search?q=hccontrol+create_connection+Status%3A+Key+missing+%5B0x6%5D
+https://forums.freebsd.org/threads/trying-to-setup-the-bluetooth-on-freebsd.97329/
+https://www.google.com/search?q=FreeBSD+bluetooth+connection+stuck+at+W4_CONN_COMPLETE%2C+then+disappears+shortly+after
+https://forums.freebsd.org/threads/cant-pair-bluetooth-headset-anyone-can-help-me.74017/
+https://badland.io/freebsd-usb-headphones.md
+https://www.google.com/search?q=FreeBSD+bluetooth+cache+file
+https://www.google.com/search?q=virtual_oss%3A+Device+name+too+long
+https://forums.freebsd.org/threads/how-to-bluetooth.64797/page-2
+https://jacekkowalczyk82.github.io/update/manuals/bsd/2020/02/09/bsd-bluetooth-audio.html
+https://www.google.com/search?q=FreeBSD+hccontrol+create_connection+key+missing
+https://forums.freebsd.org/threads/unable-to-set-up-bluetooth-stack-for-device-ubt0.31654/
+https://www.google.com/search?q=virtual_oss+illegal+option+T
+https://www.google.com/search?q=W4_CONN_COMPLETE
+https://freebsdfoundation.org/resource/audio-on-freebsd-quick-guide/
+https://forums.freebsd.org/threads/virtual_oss-stopped-working-after-the-latest-quarterly-update.97472/
+https://forums.freebsd.org/threads/bluetooth-audio-how-to-connect-and-use-bluetooth-headphones-on-freebsd.82671/
+https://www.google.com/search?q=virtual_oss%3A+Could+not+open+DSP+device+%27%2Fdev%2Fdsp0%27%3A+Operation+not+supported
+https://forums.freebsd.org/threads/freebsd-9-2-bluetooth-not-working.44022/
+
+Note on Blueteeth :
+virtual_oss -S -a o,-4 -C 2 -c 2 -r 44100 -b 16 -s 1024 -R /dev/null -P /dev/bluetooth/sc_R50i -d dsp -t vdsp.ctl
+virtual_oss -C 2 -c 2 -r 48000 -b 16 -s 20ms -P /dev/bluetooth/sc_R50i -R /dev/null -w dsp.ctl -d dsp -l mixer
+
+sudo virtual_oss -Q 0 -r 44100 -b 16 -i 0 -C 2 -c 2 -s 16ms -P /dev/bluetooth/sc_R50i -R /dev/null -d dsp -l mixer
+
+sudo bluetooth-config scan
+or just sudo micro /etc/bluetooth/hcsecd.conf
+
+add the ID thing and your desired name for device (the same name as in /etc/bluetooth/hcsecd.conf) to /etc/bluetooth/hosts
+
+sudo kldload cuse
+sudo service hcsecd start
+sudo service sdpd onestart
+sudo service bluetooth start ubt0 (or restart, execute this 2 TIMES!)
+sudo hccontrol -n ubt0hci write_authentication_enable 0
+sudo hccontrol -n ubt0hci create_connection "sc_R50i"
+
+WARNING, virtual_oss has a character limit, so we use sc_R50i instead of its full name!
+
+
+note to me : after starting virtual_oss, sound is still not going through, and virtual_oss does nothing. Shortly after, the headset produced the disconnect noise, virtual_oss outputs
+backend_bt: Could not open SDP
+backend_bt: PSM=0xffffffff
+backend_bt: PSM not found
+backend_bt: PSM=0x19
+, then the headphone connects, and then sound.
+
+Fix for other programs other than mpv unable to use the /dev/dsp device (from Gemini 3 Pro Preview) :
+Fix Audacity (The "Device Busy" Problem)
+
+The reason mpv works but Audacity fails is likely because of PulseAudio.
+
+The Chain of Command:
+
+    virtual_oss creates the door: /dev/dsp.
+
+    PulseAudio (via the module you loaded) walks through the door and locks it. It now "owns" /dev/dsp.
+
+    Audacity (set to OSS) tries to open /dev/dsp directly. It knocks on the door, but PulseAudio ignores it. Result: "Failed to open device."
+
+How to make Audacity work:
+
+Option A: The "PulseAudio" Way (Recommended for Plasma/KDE)
+Since you loaded the module into PulseAudio, you should tell Audacity to talk to PulseAudio, not the raw hardware.
+
+    Open Audacity.
+
+    Go to Audio Setup -> Host.
+
+    Select Pulse (or "ALSA" if Pulse is emulating it). Do not select "OSS" here if Pulse is running.
+
+    If "Pulse" isn't an option, install the audio/pavucontrol and audio/pulseaudio packages if missing, or check if Audacity was compiled with Pulse support.
+
+Option B: The "Pure OSS" Way (If you want direct control)
+If you prefer to bypass PulseAudio and use virtual_oss directly (which often has lower latency):
+
+    Kill PulseAudio temporarily:
+    code Sh
+
+
+pactl unload-module module-oss
+# OR completely stop it
+killall pulseaudio
+
+
+
+Configure Audacity:
+
+    Host: OSS
+
+    Playback Device: /dev/dsp
+
+Now Audacity can open the device because PulseAudio isn't hogging it.
+
+Speaker low volume :
+the mixer command shows that pcm is very low. set it to 1.00:1.00, like in Linux's alsamixer
+mixer pcm.volume=1.00:1.00
+mixer speaker.volume=1.00:1.00
+
+Switching from latest to quarterly (maybe):
+prior to switching to latest, /usr/local/etc/pkg/repos/FreeBSD.conf contains this :
+FreeBSD-base: { enabled: yes }
+
+Switching from quarterly to latest :
+https://docs.freebsd.org/en/books/handbook/ports/index.html#quarterly-latest-branch
+https://forums.freebsd.org/threads/pkg-no-srv-record-found-for-the-repo-freebsd.90716/ (fixes being remove the "pkg+" thing)
+
+htop temps reading N/A :
+https://forums.freebsd.org/threads/how-to-read-out-cpu-temperature.66802/
+kldload amdtemp / sysctl amdtemp_load="YES"
+sudo sysrc amdtemp_load="YES"
+
+code-oss os keyring stuff :
+Google AI Overview :
+To run
+code-oss (or VS Code/VSCodium) without an OS keyring, you can configure it to use a basic, unencrypted password store or ensure the keyring daemon is running and unlocked.
+Option 1: Use a Basic, Unencrypted Password Store (Recommended Workaround)
+This is the simplest solution to prevent prompts, but note that your credentials will be stored unencrypted on your system.
+
+    Open the Command Palette in code-oss (Ctrl+Shift+P or Cmd+Shift+P).
+    Search for and select Configure Runtime Arguments. This will open the argv.json file.
+    Add the following line to the JSON file:
+    json
+
+"password-store": "basic"
+
+Restart code-oss for the change to take effect.
+
+Alternatively, you can launch code-oss from the terminal using the command line flag:
+bash
+
+code --password-store=basic
+
+Option 2: Ensure the Keyring is Running and Unlocked (More Secure)
+This approach ensures that code-oss can properly access the system's secure credential storage.
+
+    Do not use automatic login for your user account. The keyring is automatically unlocked using your login password when you sign in manually.
+    Install the necessary keyring package (e.g., gnome-keyring or kwallet depending on your desktop environment).
+    Verify the keyring daemon is running as a startup application.
+    Manage your keyring passwords using a utility like seahorse (Passwords and Keys). You can choose to set an empty password for your "Login" keyring to avoid prompts, though this has security implications.
+
+For more details and troubleshooting, you can refer to the official VS Code documentation on troubleshooting keychain issues.
+
+code-oss GitHub Copilot :
+https://forums.freebsd.org/threads/vs-code-code-oss-github-copilot.92707/
+
+FreeBSD Linux chroot allow graphical programs to connect to X server on FreeBSD (whatever model Google is using for their AI Overview) :
+To run graphical programs from a Linux chroot environment on a FreeBSD host using the built-in
+Linuxulator, you need to ensure proper configuration of the X Window System (X11) and shared access to necessary devices and libraries.
+Prerequisites
+
+    FreeBSD Host X Server: A working X11 server (Xorg) must be installed and running on your FreeBSD host system.
+    Linux Binary Compatibility (Linuxulator): The linux.ko and linux64.ko kernel modules should be loaded, and the base Linux userland (e.g., linux_base-c7 package) installed.
+    fstab Entries: Necessary filesystems like proc, dev, and shm need to be mounted within the Linux chroot environment via entries in the FreeBSD host's /etc/fstab file.
+
+Configuration Steps
+
+    Mount Necessary Filesystems: Ensure your /etc/fstab on the FreeBSD host has entries to mount required virtual filesystems into your chroot directory (e.g., /compat/linux or /compat/ubuntu):
+
+    # Device          Mountpoint              FStype  Options         Dump    Pass#
+    devfs             /compat/linux/dev       devfs   rw,late         0       0
+    tmpfs             /compat/linux/dev/shm   tmpfs   rw,late,size=1g 0       0
+    procfs            /compat/linux/proc      procfs  rw,late         0       0
+
+    Note: rw,late ensures they are mounted after the base system.
+    Install Linux Xorg Libraries: Inside the Linux chroot, you need the equivalent Xorg libraries for the applications to link against:
+        For an Ubuntu/Debian chroot: sudo apt install libxext6 libxrender1 libxtst6 libxi6 fontconfig fonts-dejavu-core.
+        For a CentOS chroot: Use appropriate yum or dnf commands.
+    Share the X11 Display: The Linux application needs to communicate with the host's X server. This is typically done by sharing the X socket and setting the DISPLAY environment variable.
+        Ensure the X11 socket from the host is accessible inside the chroot.
+        Set the DISPLAY variable before running the program:
+        bash
+
+export DISPLAY=:0.0
+# or sometimes 127.0.0.1:0 if using TCP/IP
+
+You might need to use xhost + on the host (use with caution as it loosens security) or configure X security properly to allow the chroot's processes to connect. A common approach is using a PulseAudio socket for audio and an Xwayland or Xephyr server for display for better isolation/security, as seen in complex setups.
+
+Running the Program
+You can run the application either from within the chroot session or directly from the FreeBSD shell:
+
+    From within the chroot:
+    bash
+
+chroot /compat/linux /bin/bash -c "export DISPLAY=:0.0; your_gui_program"
+
+From the FreeBSD host (without explicitly entering chroot):
+bash
+
+env DISPLAY=:0.0 /compat/linux/path/to/your/program
+
+This method requires proper library path configurations which are often handled by the Linuxulator setup scripts.
+
+For advanced setups, particularly involving GPU acceleration, users often require specific driver version matches between the host FreeBSD Nvidia driver and the Linux chroot Nvidia user-space driver libraries.
+For detailed, application-specific scripts and guides, community members on the FreeBSD forums often share successful configurations, such as those for browsers or specific software like DaVinci Resolve.
+(it's the "xhost +" one)
+
+Default mount :
+// https://forums.freebsd.org/threads/fusefs-post-install-instruction-referencing-wrong-module-name.82757/ (/boot/loader.conf add fusefs_load="YES")
+// https://forums.freebsd.org/threads/mounting-a-logical-ext4-partition-in-freebsd.72286/
+https://man.freebsd.org/cgi/man.cgi?fstab(5)
+https://man.freebsd.org/cgi/man.cgi?query=mount&sektion=8&apropos=0&manpath=FreeBSD+15.0-RELEASE+and+Ports
+https://forums.freebsd.org/threads/freebsd-13-1-release-having-difficulties-with-usb-mounting-ext4-using-fusefs-lkl.87443/
+https://superuser.com/questions/174776/modify-fstab-entry-so-all-users-can-read-and-write-to-an-ext4-volume
+https://forums.freebsd.org/threads/etc-fstab-error-now-dont-start-freebsd.11348/ (maybe if you messed up)
+
+/dev/ada1p1     /mnt/HDD    ext2fs  rw,failok   0       0
+sudo mkdir /mnt/HDD (BEFOREHAND!)
+sudo chmod 777 /mnt/HDD (BEFOREHAND!)
+chmod 777 /mnt/HDD (I think you need this too, executed with normal user)
+after that, chmod -R 777 /mnt/HDD, IS THIS HOW YOU'RE SUPPOSED TO DO THIS, OR HAVE I JUST FUCKED MY HDD's PERMS?
+the superuser.com question suggests everyone to make the directory beforehand, and set the perms, and not to do that inside fstab directly
+
+ln -sv "/mnt/HDD/Home Folder Substitutions/Downloads" "/home/testnow720/Downloads"
+ln -sv "/mnt/HDD/Home Folder Substitutions/Music" "/home/testnow720/Music"
+ln -sv "/mnt/HDD/Home Folder Substitutions/Videos" "/home/testnow720/Videos"
+
+Not tested well :
+
+PCM volume behaviour :
+https://forums.freebsd.org/threads/issues-with-mixer-pcm-pcm-volume-misbehavior.93288/
+
+this one is just not executed well :
+default audio :
+https://man.freebsd.org/cgi/man.cgi?mixer(8)
+https://forums.freebsd.org/threads/issues-with-mixer-pcm-pcm-volume-misbehavior.93288/ (this again for initial inspiration)
+https://forums.freebsd.org/threads/switching-dsp-devices-on-the-fly.69773/#post-419290 (this one outright mentions said techniques that I've thought of prior)
+https://forums.freebsd.org/threads/switch-between-audio-devices-in-real-time.72422/
+
+
+
+
+
+
+In January, while I was trying to get Wayland working, the FreeBSD ports broke :
+https://github.com/freebsd/pkg/issues/2575
+https://github.com/freebsd/pkg/issues/2584
+https://github.com/freebsd/pkg/issues/2583
+
+lol
+
+
+
+disabling system poweroff on power button press : https://forums.freebsd.org/threads/how-to-disable-system-shutdown-on-power-button.56807/
+Wine 32-bit : https://www.youtube.com/watch?v=BuZeVjCx1-4, https://www.reddit.com/r/freebsd/comments/1pfs2yr/is_there_an_alternative_to_wine_on_freebsd_15_for/
+
+NVENC :
+https://forums.freebsd.org/threads/is-accelerated-graphics-possible-with-i915kms-on-freebsd-13-and-14-32-bit.91258/page-3
+https://www.google.com/search?q=nv-sglrun
+https://forums.freebsd.org/tags/nv-sglrun/
+https://forums.freebsd.org/threads/can-cuda-be-installed-on-freebsd-now.85879/
+https://forums.freebsd.org/threads/libc6-shim-20240512-ffmpeg-nvenc-working-but-issues-with-obs-and-handbrake.93797/
+https://forums.freebsd.org/threads/obs-studio-nvenc-encoding-with-nv-sglrun-need-a-bit-of-help.91480/
+https://www.google.com/search?q=nv-sglrun+can%27t+find+libcuda
+
+wine not using wineoss.drv, like in https://docs.freebsd.org/en/books/handbook/wine/#audio :
+# wine-proton does use it
+sudo pkg install wine-proton
+sudo cp /usr/local/wine-proton/lib/wine/x86_64-unix/wineoss.so /usr/local/lib/wine/x86_64-unix/
+sudo cp /usr/local/wine-proton/lib/wine/x86_64-windows/wineoss.drv /usr/local/lib/wine/x86_64-windows/
+if still doesn't detect, you're fucked. delete .wine wineprefix, then do it all over again. it is recommended not to run winetricks sound=oss.
+
+CotL not playing the H.264 video cinematics :
+winetricks dxvk
+# don't know why that works, but it does.
+I did this before : https://github.com/Sikarugir-App/mf-install, maybe that plays a role
+
+JetBrains Rider on FreeBSD :
+just download the Linux version, on bin run rider (not rider.sh)
+
+get rid of unnecessary ZFS mountpoint clutter :
+sudo cp -rv /var/audit /var/audit_temp
+sudo zfs unmount freebsd-zroot/var/audit
+sudo zfs destroy freebsd-zroot/var/audit
+sudo rm -rd /var/audit
+sudo mv /var/audit_temp /var/audit
+
+repeat for /var/audit, /var/crash, /var/log, /var/mail, /var/tmp, /usr/ports, and /usr/src
+use zfs list -t filesystem, lsof for debug
+If have cannot unmount '/*whatever*': pool or dataset is busy, use sudo zfs unmount -f. using -f on destroy comamnd isn't necessary.
+
+yt-dlp can't get sane formats when using cookies :
+# install deno
+sudo pkg install deno
+
+TODO:
+FreeBSD weird missing Unicode glyphs
+Move FreeBSD to NVMe SSD
+Get rid of the ZFS mountpoints clutter on fastfetch
+Replace my pcm_keeper.sh script. properly find fixes for it, instead of hacking together something jank again.
+fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow...
+Eventually, get Wayland working, someday.
