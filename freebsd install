@@ -395,9 +395,11 @@ yt-dlp can't get sane formats when using cookies :
 sudo pkg install deno
 
 TODO:
-FreeBSD weird missing Unicode glyphs
-Move FreeBSD to NVMe SSD
-Get rid of the ZFS mountpoints clutter on fastfetch
-Replace my pcm_keeper.sh script. properly find fixes for it, instead of hacking together something jank again.
-fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow...
-Eventually, get Wayland working, someday.
+[] FreeBSD weird missing Unicode glyphs
+[] Backup random data to NVMe SSD
+[] Move FreeBSD to NVMe SSD
+[x] Get rid of the ZFS mountpoints clutter on fastfetch
+[] Replace my pcm_keeper.sh script. properly find fixes for it, instead of hacking together something jank again.
+[] fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow...
+[] Eventually, get Wayland working, someday.
+[] mpv mpv-mpris2-fixed my own fork
