@@ -403,3 +403,4 @@ TODO:
 [] fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow...
 [] Eventually, get Wayland working, someday.
 [] mpv mpv-mpris2-fixed my own fork
+[] Migrate my HDD to ZFS somehow
