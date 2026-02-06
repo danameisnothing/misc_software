@@ -394,11 +394,21 @@ yt-dlp can't get sane formats when using cookies :
 # install deno
 sudo pkg install deno
 
+migrate FreeBSD to another drive :
+https://it-notes.dragas.net/2024/09/16/moving-freebsd-installation-new-host-vm/
+https://forum.proxmox.com/threads/how-to-clone-a-2x500gb-drives-zfs-mirror-zpool-to-a-larger-2x1tb-drives-mirror.119090/
+
+can't unmount zfs dataset :
+just boot into a Windows installer, and nuke the disk lmao.
+
+bonus - see disk I/O usage :
+https://forums.freebsd.org/threads/monitoring-disk-i-o-on-freebsd.76408/
+
 TODO:
 [] FreeBSD weird missing Unicode glyphs
-[] Backup random data to NVMe SSD
-[] Move FreeBSD to NVMe SSD
-[x] Get rid of the ZFS mountpoints clutter on fastfetch
+[X] Backup random data to NVMe SSD
+[X] Move FreeBSD to NVMe SSD
+[X] Get rid of the ZFS mountpoints clutter on fastfetch
 [] Replace my pcm_keeper.sh script. properly find fixes for it, instead of hacking together something jank again.
 [] fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow...
 [] Eventually, get Wayland working, someday.
