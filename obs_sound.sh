@@ -12,10 +12,11 @@ fi
 voss_redirect="$1"
 
 main() {
+    echo "How to use: Add Audio Input Capture (OSS), set DSP to Custom, then specify /dev/mixer!"
     # prompt the sudo password first
     sudo printf ""
 
-    sudo virtual_oss -Q 2 -C 2 -c 2 -r 48000 -b 16 -s 1024 -P "$voss_redirect" -R "/dev/null" -w vdsp.wav -l "dsp" &
+    sudo virtual_oss -Q 2 -C 2 -c 2 -r 48000 -b 16 -s 1024 -P "$voss_redirect" -R "/dev/null" -w vdsp.wav -d "dsp" -l "mixer" &
     voss_pid=$!
     trap cleanup SIGINT
 

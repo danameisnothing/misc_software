@@ -423,6 +423,9 @@ sudo gpart destroy -F /dev/ada0
 sudo gpart create -s gpt ada0
 sudo gpart add -a 1m -t freebsd-zfs -l klevv-240-zfs0 ada0
 zpool create -O compression=on -O atime=off klevv-240-zfs /dev/gpt/klevv-240-zfs0
+sudo zfs unmount -f klevv-240-zfs
+sudo zfs set mountpoint=/mnt/klevv-240-zfs klevv-240-zfs
+sudo chown -R testnow720:testnow720 "/mnt/klevv-240-zfs/"
 
 This might cause ghost of the old zroot in an UNAVAIL state, so :
 https://technicalsanctuary.wordpress.com/2013/09/27/destroying-a-zpool-that-cannot-be-imported/
@@ -433,6 +436,16 @@ https://forums.freebsd.org/threads/how-to-recored-audio-from-game-on-freebsd.778
 https://www.youtube.com/watch?v=8shndoAm9P0
 https://forums.freebsd.org/threads/how-to-record-desktop-audio-on-obs-studio.82410/
 https://forums.freebsd.org/threads/no-sound-when-recording-video-with-obs-studio-or-simplescreenrecorder.79663/
+
+tmux setup :
+https://gist.github.com/MohamedAlaa/2961058
+https://medium.com/pragmatic-programmers/a-beginners-guide-to-tmux-7e6daa5c0154
+https://stackoverflow.com/questions/58506200/how-to-run-tmux-with-shell-command
+https://unix.stackexchange.com/a/44638
+https://stackoverflow.com/a/58506901
+https://unix.stackexchange.com/q/516800
+https://gist.github.com/danameisnothing/7cbc6e1251a768a2b5ef4b878d9e5c59 (my research a while ago, yeet)
+> tmux new-session -s "stuff" "zsh -c \" echo 'Running pcm_keeper.sh :\n'; $HOME/Desktop/pcm_keeper.sh \"" \; split-window "zsh -c \" echo 'Running mangohud_true_clock.sh :'; $HOME/Desktop/projects/misc_software/mangohud_freebsd/mangohud_true_clock.sh \"" \; split-window "zsh -c \" echo 'Running obs_sound.sh :'; $HOME/Desktop/projects/misc_software/obs_sound.sh /dev/dsp3; zsh \"" \; split-window "zsh -c \" echo 'Running OBS :'; nv-sglrun obs; zsh \"" \; split-window "zsh -c \" echo 'Running iostat :'; sudo iostat -x -w 0.1; zsh \"" \; set -g mouse on \; select-layout tiled
 
 tech tips :
 - Make sure you have a ZFS snapshot, at least for your home folder. It saved my ass from accidentally overwriting a file.
@@ -448,6 +461,7 @@ Risks and Better Alternatives
     Alternative Cleanup: If virtual_oss has crashed and you cannot restart it, use service virtual_oss restart (if managed by rc.d) or kill the lingering process to free the underlying audio device (/dev/dsp8 or similar) and then restart the tool.
 
 If virtual_oss is crashing frequently, ensure you are using the latest version, as the audio stack in FreeBSD has had significant updates, including improvements to virtual_oss.
+- copying stuff with rsync : rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --compress --compress-choice=zlib --compress-level=9 --stats --progress --fsync "/mnt/HDD/General/iso files" "/mnt/klevv-240-zfs/"
 
 TODO:
 [] FreeBSD weird missing Unicode glyphs
@@ -455,7 +469,7 @@ TODO:
 [X] Move FreeBSD to NVMe SSD
 [X] Get rid of the ZFS mountpoints clutter on fastfetch
 [] Replace my pcm_keeper.sh script. properly find fixes for it, instead of hacking together something jank again.
-[] fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow...
+[X] fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow... (fixed by changing to OBS lmao)
 [] Eventually, get Wayland working, someday.
-[] mpv mpv-mpris2-fixed my own fork
+[X] mpv mpv-mpris2-fixed my own fork
 [] Migrate my HDD to ZFS somehow
