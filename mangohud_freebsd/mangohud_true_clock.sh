@@ -5,6 +5,8 @@ if (( $(id -u) == 0 )); then
     exit 1
 fi
 
+sudo kldload amdtemp cpuctl
+
 # https://unix.stackexchange.com/a/283875
 tmp_file="$(mktemp /tmp/turbostat_mangohud-XXXXXX)"
 tmp_file2="$(mktemp /tmp/turbostat_mangohud_raw-XXXXXX)"

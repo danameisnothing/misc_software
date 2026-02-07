@@ -415,6 +415,7 @@ sudo make install
 # I probably clones the ports collection on ~20th of January or something. At the time of writing (6th February), the last update for OBS in ports is in the 31st of January
 # at least it works now.
 # NOTE: it was commit 7ffb506df86ad09e7e87d9f4f85112a1cc774d7e that fixed it for me. (securty/nmap*: Fix dbus build)
+# OBS version 32.0.4
 
 partition SSD as ZFS :
 # NOTE: I use ada0 here!
@@ -425,7 +426,28 @@ zpool create -O compression=on -O atime=off klevv-240-zfs /dev/gpt/klevv-240-zfs
 
 This might cause ghost of the old zroot in an UNAVAIL state, so :
 https://technicalsanctuary.wordpress.com/2013/09/27/destroying-a-zpool-that-cannot-be-imported/
-# thanks for saving my ass
+
+recording audio with programs that are outputting with OSS :
+# NOTE: I have a script for this! This is just when I was researching on how to do it
+https://forums.freebsd.org/threads/how-to-recored-audio-from-game-on-freebsd.77855/
+https://www.youtube.com/watch?v=8shndoAm9P0
+https://forums.freebsd.org/threads/how-to-record-desktop-audio-on-obs-studio.82410/
+https://forums.freebsd.org/threads/no-sound-when-recording-video-with-obs-studio-or-simplescreenrecorder.79663/
+
+tech tips :
+- Make sure you have a ZFS snapshot, at least for your home folder. It saved my ass from accidentally overwriting a file.
+- When virtual_oss fails with creating a CUSE DSP device, check with service virtual_oss status, sudo kill $PID, then try again
+AI Overview result :
+Deleting
+/dev/dsp when virtual_oss crashes is generally not recommended and is not the proper way to handle a crash, although the system will usually regenerate it.
+virtual_oss manages the default sound device (/dev/dsp) on FreeBSD by overriding it with a virtualized one. If virtual_oss crashes, it may leave behind a dangling device node or lock up the underlying PCM device.
+Risks and Better Alternatives
+
+    Why not delete: /dev/dsp is managed by the kernel's sound(4) system. Manually deleting device nodes in /dev while the kernel still thinks they exist can lead to unpredictable behavior, including errors in audio applications that attempt to access it.
+    The Safe Approach: Instead of deleting the device node, restart the virtual_oss daemon.
+    Alternative Cleanup: If virtual_oss has crashed and you cannot restart it, use service virtual_oss restart (if managed by rc.d) or kill the lingering process to free the underlying audio device (/dev/dsp8 or similar) and then restart the tool.
+
+If virtual_oss is crashing frequently, ensure you are using the latest version, as the audio stack in FreeBSD has had significant updates, including improvements to virtual_oss.
 
 TODO:
 [] FreeBSD weird missing Unicode glyphs

@@ -1,0 +1,33 @@
+#!/usr/local/bin/zsh
+
+set -eo pipefail
+
+voss_pid=""
+
+if [ -z "$1" ]; then
+    echo "/dev/dsp redirect for virtual_oss not specified"
+    exit 1
+fi
+
+voss_redirect="$1"
+
+main() {
+    # prompt the sudo password first
+    sudo printf ""
+
+    sudo virtual_oss -Q 2 -C 2 -c 2 -r 48000 -b 16 -s 1024 -P "$voss_redirect" -R "/dev/null" -w vdsp.wav -l "dsp" &
+    voss_pid=$!
+    trap cleanup SIGINT
+
+    while true; do
+        sleep 0
+    done
+}
+
+cleanup() {
+    # I got this one from Claude
+    wait "$voss_pid" || true
+    echo "Make sure to terminate OBS first, and do NOT force-terminate this script. If not, $voss_redirect will be hogged by OBS, and virtual_oss can't terminate! Use lsof $voss_redirect to see them processes that is using the device"
+}
+
+main

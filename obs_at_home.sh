@@ -74,6 +74,7 @@ cleanup() {
     # I got this one from Claude
     wait "$ffmpeg_pid_vid" "$ffmpeg_pid_aud" "$voss_pid" || true
     echo "concatenating final file"
+    # TODO: ADD OVERWRITE DETECTION WTF? THIS DELETED MY 70GB RECORDING. THANKS ZFS SNAPSHOTS FOR SAVING MY ASS!
     ffmpeg -y -hide_banner -i "$vid_tmp" -i "$aud_tmp" -map "0:v" -map "1:a" -c "copy" "$input"
     rm "$vid_tmp"
     rm "$aud_tmp"
