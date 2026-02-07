@@ -416,6 +416,17 @@ sudo make install
 # at least it works now.
 # NOTE: it was commit 7ffb506df86ad09e7e87d9f4f85112a1cc774d7e that fixed it for me. (securty/nmap*: Fix dbus build)
 
+partition SSD as ZFS :
+# NOTE: I use ada0 here!
+sudo gpart destroy -F /dev/ada0
+sudo gpart create -s gpt ada0
+sudo gpart add -a 1m -t freebsd-zfs -l klevv-240-zfs0 ada0
+zpool create -O compression=on -O atime=off klevv-240-zfs /dev/gpt/klevv-240-zfs0
+
+This might cause ghost of the old zroot in an UNAVAIL state, so :
+https://technicalsanctuary.wordpress.com/2013/09/27/destroying-a-zpool-that-cannot-be-imported/
+# thanks for saving my ass
+
 TODO:
 [] FreeBSD weird missing Unicode glyphs
 [X] Backup random data to NVMe SSD
