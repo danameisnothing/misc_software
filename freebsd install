@@ -375,6 +375,24 @@ CotL not playing the H.264 video cinematics :
 winetricks dxvk
 # don't know why that works, but it does.
 I did this before : https://github.com/Sikarugir-App/mf-install, maybe that plays a role
+--> my old debug step, in case you fuck up doing this :
+install wmp11 and mf
+use this script https://gist.github.com/Matoking/2017eeffc1cee82f4797530c67707437, replace $INSTALLCAB_PY to python3 $PYTHON_INSTALLCAB_PATH/installcab.py, specify WINEPREFIX
+
+/compat/ubuntu/root/.wine/drive_c/windows/system32/mfplat.dll is on my Ubuntu chroot. We shall put it in the same location
+$ sudo find / -name "*mfplat*.dll*"
+/usr/local/wine-proton/lib/wine/x86_64-windows/mfplat.dll
+/usr/local/lib/wine/x86_64-windows/mfplat.dll
+/home/testnow720/.i386-wine-pkg/usr/local/wine-proton/lib/wine/i386-windows/mfplat.dll
+/home/testnow720/.i386-wine-pkg/usr/local/lib/wine/i386-windows/mfplat.dll
+
+choose, wine-proton or wine.
+
+cp /usr/local/wine-proton/lib/wine/x86_64-windows/mfplat.dll ~/.wine/drive_c/windows/system32
+cp /home/testnow720/.i386-wine-pkg/usr/local/wine-proton/lib/wine/i386-windows/mfplat.dll ~/.wine/drive_c/windows/syswow64
+
+
+
 
 JetBrains Rider on FreeBSD :
 just download the Linux version, on bin run rider (not rider.sh)
