@@ -465,6 +465,27 @@ https://unix.stackexchange.com/q/516800
 https://gist.github.com/danameisnothing/7cbc6e1251a768a2b5ef4b878d9e5c59 (my research a while ago, yeet)
 > tmux new-session -s "stuff" "zsh -c \" echo 'Running pcm_keeper.sh :\n'; $HOME/Desktop/pcm_keeper.sh \"" \; split-window "zsh -c \" echo 'Running mangohud_true_clock.sh :'; $HOME/Desktop/projects/misc_software/mangohud_freebsd/mangohud_true_clock.sh \"" \; split-window "zsh -c \" echo 'Running obs_sound.sh :'; $HOME/Desktop/projects/misc_software/obs_sound.sh /dev/dsp3; zsh \"" \; split-window "zsh -c \" echo 'Running OBS :'; nv-sglrun obs; zsh \"" \; split-window "zsh -c \" echo 'Running iostat :'; sudo iostat -x -w 0.1; zsh \"" \; set -g mouse on \; select-layout tiled
 
+FreeBSD missing Unicode code points :
+install the noto metapackage for God's sake, don't just install parts of it like I did!
+sudo pkg install noto
+Some sites that I used to test this :
+https://everythingfonts.com/unicode/0xFF5C
+https://everythingfonts.com/unicode/0xFE64
+https://www.cogsci.ed.ac.uk/~richard/unicode-sample-3-2.html (some are supposed to still be missing. That's fine. I don't care)
+
+Convert HDD to ZFS :
+sudo gpart delete -i 1 ada1
+sudo gpart add -a 1m -t freebsd-zfs -l st-1000-zfs0 ada1
+zpool create -f -O compression=on -O atime=off st-1000-zfs /dev/gpt/st-1000-zfs0
+sudo zfs unmount -f st-1000-zfs
+sudo zfs set mountpoint=/mnt/st-1000-zfs st-1000-zfs
+sudo chown -R testnow720:testnow720 "/mnt/st-1000-zfs"
+
+sudo gpart modify -i 1 -l st-1000-zfs0 ada1
+
+if you can't create zpool, check mount for `/dev/ada1p1 on /media/ST1000LM0351RK172-1000-zfs0 (ext2fs, asynchronous, local)`
+sudo umount "/media/ST1000LM0351RK172-1000-zfs0"
+
 tech tips :
 - Make sure you have a ZFS snapshot, at least for your home folder. It saved my ass from accidentally overwriting a file.
 - When virtual_oss fails with creating a CUSE DSP device, check with service virtual_oss status, sudo kill $PID, then try again
@@ -479,10 +500,12 @@ Risks and Better Alternatives
     Alternative Cleanup: If virtual_oss has crashed and you cannot restart it, use service virtual_oss restart (if managed by rc.d) or kill the lingering process to free the underlying audio device (/dev/dsp8 or similar) and then restart the tool.
 
 If virtual_oss is crashing frequently, ensure you are using the latest version, as the audio stack in FreeBSD has had significant updates, including improvements to virtual_oss.
-- copying stuff with rsync : rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --compress --compress-choice=zlib --compress-level=9 --stats --progress --fsync "/mnt/HDD/General/iso files" "/mnt/klevv-240-zfs/"
+- copying stuff with rsync : rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --stats --progress --fsync "/mnt/HDD/General/iso files" "/mnt/klevv-240-zfs/"
+TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:HOLY SHIT DON'T COMPRESS FOR LOCAL TRANSFERS! WHAT THE FUCK WERE YOU THINKING?!
+- rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --compress --compress-choice=zlib --compress-level=9 --stats --progress --rsh= "/mnt/HDD/General/iso files" "/mnt/klevv-240-zfs/"
 
 TODO:
-[] FreeBSD weird missing Unicode glyphs
+[X] FreeBSD weird missing Unicode glyphs
 [X] Backup random data to NVMe SSD
 [X] Move FreeBSD to NVMe SSD
 [X] Get rid of the ZFS mountpoints clutter on fastfetch
@@ -490,4 +513,5 @@ TODO:
 [X] fix my obs_at_home script, make it delete data file at beginning while FFmpeg is merging the video, somehow... (fixed by changing to OBS lmao)
 [] Eventually, get Wayland working, someday.
 [X] mpv mpv-mpris2-fixed my own fork
-[] Migrate my HDD to ZFS somehow
+[X] Migrate my HDD to ZFS somehow
+[] new snapshot of the current state of the boot drive, sata ssd, and hdd
