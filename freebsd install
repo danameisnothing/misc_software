@@ -486,6 +486,11 @@ sudo gpart modify -i 1 -l st-1000-zfs0 ada1
 if you can't create zpool, check mount for `/dev/ada1p1 on /media/ST1000LM0351RK172-1000-zfs0 (ext2fs, asynchronous, local)`
 sudo umount "/media/ST1000LM0351RK172-1000-zfs0"
 
+snapshot stuff :
+sudo zfs snapshot freebsd-zroot/home/testnow720@09-02-2026
+sudo zfs snapshot klevv-240-zfs@09-02-2026
+sudo zfs snapshot st-1000-zfs@09-02-2026
+
 tech tips :
 - Make sure you have a ZFS snapshot, at least for your home folder. It saved my ass from accidentally overwriting a file.
 - When virtual_oss fails with creating a CUSE DSP device, check with service virtual_oss status, sudo kill $PID, then try again
