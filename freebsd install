@@ -434,6 +434,7 @@ sudo make install
 # at least it works now.
 # NOTE: it was commit 7ffb506df86ad09e7e87d9f4f85112a1cc774d7e that fixed it for me. (securty/nmap*: Fix dbus build)
 # OBS version 32.0.4
+# if OBS "randomly" crashes with a QWidget error again, go to /usr/ports, and just sudo make reinstall, without rebuilding
 
 partition SSD as ZFS :
 # NOTE: I use ada0 here!
@@ -491,6 +492,22 @@ sudo zfs snapshot freebsd-zroot/home/testnow720@09-02-2026
 sudo zfs snapshot klevv-240-zfs@09-02-2026
 sudo zfs snapshot st-1000-zfs@09-02-2026
 
+mpv doesn't have sixel, pulseaudio support from pkg : compile it from ports lmao
+
+PulseAudio sound distortion at less-than-max-volume :
+https://forum.endeavouros.com/t/stupid-simple-tweak-to-improve-pulseaudio-audio-quality/9654/8
+https://moral.net.au/writing/2017/07/23/pulseaudio/
+create ~/.config/pulse/daemon.conf :
+flat-volumes = no
+avoid-resampling = yes
+resample-method = soxr-vhq
+
+test commands :
+pulseaudio --dump-conf
+
+NOTE: I'm not sure if the problem has already disappeared. I *feel* that it has, although that could be my brain playing tricks against me for this super un-scientific comparison against OSS, or my ears have been sufficiently fucked from listening at loud volume.
+Nope, the problem is still there. I can't be bothered to care about it that much. OSS works.
+
 tech tips :
 - Make sure you have a ZFS snapshot, at least for your home folder. It saved my ass from accidentally overwriting a file.
 - When virtual_oss fails with creating a CUSE DSP device, check with service virtual_oss status, sudo kill $PID, then try again
@@ -507,7 +524,7 @@ Risks and Better Alternatives
 If virtual_oss is crashing frequently, ensure you are using the latest version, as the audio stack in FreeBSD has had significant updates, including improvements to virtual_oss.
 - copying stuff with rsync : rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --stats --progress --fsync "/mnt/HDD/General/iso files" "/mnt/klevv-240-zfs/"
 TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:HOLY SHIT DON'T COMPRESS FOR LOCAL TRANSFERS! WHAT THE FUCK WERE YOU THINKING?!
-- rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --compress --compress-choice=zlib --compress-level=9 --stats --progress --rsh= "/mnt/HDD/General/iso files" "/mnt/klevv-240-zfs/"
+- rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --compress --compress-choice=zlib --compress-level=9 --stats --progress --rsh="/mnt/HDD/General/iso files" "username@192.168.0.1:/storage/emulated/0/"
 
 TODO:
 [X] FreeBSD weird missing Unicode glyphs
@@ -519,4 +536,4 @@ TODO:
 [] Eventually, get Wayland working, someday.
 [X] mpv mpv-mpris2-fixed my own fork
 [X] Migrate my HDD to ZFS somehow
-[] new snapshot of the current state of the boot drive, sata ssd, and hdd
+[X] new snapshot of the current state of the boot drive, sata ssd, and hdd
