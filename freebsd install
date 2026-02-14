@@ -435,6 +435,7 @@ sudo make install
 # NOTE: it was commit 7ffb506df86ad09e7e87d9f4f85112a1cc774d7e that fixed it for me. (securty/nmap*: Fix dbus build)
 # OBS version 32.0.4
 # if OBS "randomly" crashes with a QWidget error again, go to /usr/ports, and just sudo make reinstall, without rebuilding
+# yay, on https://www.freshports.org/multimedia/obs-studio, they finally acknowledged the bug, they even added WITH_DEBUG on the official pkg repo lol (multimedia/obs-studio: Add workaround for the crash due to the Qt6 problem), thanks yuri!
 
 partition SSD as ZFS :
 # NOTE: I use ada0 here!
@@ -464,7 +465,8 @@ https://unix.stackexchange.com/a/44638
 https://stackoverflow.com/a/58506901
 https://unix.stackexchange.com/q/516800
 https://gist.github.com/danameisnothing/7cbc6e1251a768a2b5ef4b878d9e5c59 (my research a while ago, yeet)
-> tmux new-session -s "stuff" "zsh -c \" echo 'Running pcm_keeper.sh :\n'; $HOME/Desktop/pcm_keeper.sh \"" \; split-window "zsh -c \" echo 'Running mangohud_true_clock.sh :'; $HOME/Desktop/projects/misc_software/mangohud_freebsd/mangohud_true_clock.sh \"" \; split-window "zsh -c \" echo 'Running obs_sound.sh :'; $HOME/Desktop/projects/misc_software/obs_sound.sh /dev/dsp3; zsh \"" \; split-window "zsh -c \" echo 'Running OBS :'; nv-sglrun obs; zsh \"" \; split-window "zsh -c \" echo 'Running iostat :'; sudo iostat -x -w 0.1; zsh \"" \; set -g mouse on \; select-layout tiled
+https://stackoverflow.com/a/12175341
+> tmux new-session -s "stuff" "echo 'Running pcm_keeper.sh :\n'; $HOME/Desktop/pcm_keeper.sh" \; split-window "echo 'Running mangohud_true_clock.sh :'; $HOME/Desktop/projects/misc_software/mangohud_freebsd/mangohud_true_clock.sh" \; split-window "trap zsh SIGINT; echo 'Running obs_sound.sh :'; $HOME/Desktop/projects/misc_software/obs_sound.sh /dev/dsp4" \; split-window "trap zsh SIGINT; echo 'Running OBS :'; nv-sglrun obs; zsh; # This is because we can close OBS normally, never triggering our trap" \; split-window "trap zsh SIGINT; echo 'Running iostat :'; sudo iostat -x -w 0.1" \; set -g mouse on \; select-layout tiled
 
 FreeBSD missing Unicode code points :
 install the noto metapackage for God's sake, don't just install parts of it like I did!
@@ -511,6 +513,57 @@ This uses ~45% of the ASIC.
 preset=p7 tune=uhq profile:v=main rc=0 2pass=true qp=12 multipass=fullres
 This uses ~70% - 80% of the ASIC. I've dropped frames with this. It's not while on desktop, nor on the lighter-scene of a game, but it manifests in the battle scenes. This is NOT recommended!
 
+Wine version mismatch (10.0 for 32-bit, 11.0 for 64-bit), and /usr/local/share/wine/pkg32.sh search wine returns only Wine 10 :
+# NOTE: Fuck this shit, my plan is to play games, not debug this shit any longer.
+# it may also popup this error :
+# pkg: Error opening the trusted directory /usr/share/keys/pkgbase-15/trusted
+# pkg: Error loading trusted certificates
+# pkg: Repository FreeBSD-base cannot be opened. 'pkg update' required
+# I have no idea why I was having no trouble doing this before, or why this problem propped up now. I always used FreeBSD 15 Release, only changing from p1 to p2 to p3
+# from memory, I always had Wine 11 on 64-bit. I'm guessing that by this error not being triggered before, the versions must match.
+# so either before Wine was always version 10 on 64-bit, or Wine with pkg32 before had Wine 11, and for some reason now its only Wine 10
+# If you check on https://www.freshports.org/emulators/wine/, FreeBSD:15:latest and FreeBSD:15:quarterly don't have any versions for wine for i386
+https://forums.freebsd.org/threads/wine-devel-freebsd-15-0-no-update-for-32-bit-wine.100765/
+https://www.freshports.org/emulators/wine/
+
+sudo pkg remove wine
+sudo pkg install wine-devel
+winecfg
+# it may still complained about a mismatched version, but it gave this command, whereas before, it didn't
+/usr/local/share/wine/pkg32.sh --old upgrade -r FreeBSD-ports
+# this downgrades a bunch of packages to be the one from FreeBSD:14:i386
+# don't remove wine-devel and revert back to wine, wine: could not load ntdll.so: Shared object "libhwloc.so.15" not found, required by "ntdll.so"
+# just edit out wine and winecfg exit 1. it might just work, like exit 1 becoming #exit 1
+which wine; which winecfg
+winecfg winecfg
+# yes, that is required lol
+# if winetricks is fighting you, complaining about w_metadata bullshit, edit winetricks script, find "Cygwin, where it is too slow, and comment out the test"
+
+THIS DOESN'T WORK. i've abandoned it here BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD BAD :
+https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=291328
+# we prepare packages
+mkdir -p ~/.i386-wine-pkg/etc/pkg/
+cat <<EOF > ~/.i386-wine-pkg/etc/pkg/FreeBSD.conf
+FreeBSD-ports: {
+  url: "pkg+https://pkg.FreeBSD.org/FreeBSD:14:i386/latest",
+  mirror_type: "srv",
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkg",
+  enabled: yes
+}
+EOF
+export ABI="FreeBSD:14:i386" OSVERSION="1403000" REPOS_DIR="/home/testnow720/.i386-wine-pkg/etc/pkg/"
+/usr/local/share/wine/pkg32.sh -vv
+/usr/local/share/wine/pkg32.sh search wine
+# verify if the URL is FreeBSD:14:i386/latest, ignore all warnings, check if Wine 11
+some sources that may or may not be useful while researching this bullshit :
+https://www.reddit.com/r/freebsd/comments/1o70jdy/winei386_in_freebsd16_gone/
+https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=290887
+
+
+this part may be unused :
+https://forums.freebsd.org/threads/wine-devel-freebsd-15-0-no-update-for-32-bit-wine.100765/
+sudo pkg install compat14x-amd64
 
 this is the stuff that failed :
 
@@ -555,6 +608,8 @@ If virtual_oss is crashing frequently, ensure you are using the latest version, 
 TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:TODO:HOLY SHIT DON'T COMPRESS FOR LOCAL TRANSFERS! WHAT THE FUCK WERE YOU THINKING?!
 - rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --compress --compress-choice=zlib --compress-level=9 --stats --progress --rsh="/mnt/HDD/General/iso files" "username@192.168.0.1:/storage/emulated/0/"
 - ffmpeg -h encoder=hevc_nvenc
+- rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --compress --compress-choice=zlib --compress-level=9 --stats --progress --fsync "/home/testnow720/Music/Miscellaneous Audio/transformative-meditations-flac" "/home/testnow720/Music/Miscellaneous Audio/transformative-meditations-ogg" "/home/testnow720/Music/Miscellaneous Audio/transformative-meditations-ost-flac" "/home/testnow720/Music/Miscellaneous Audio/transformative-meditations-ost-ogg" "/media/testnow720/TM_ExFAT/Miscellaneous Audio"
+- sudo pkg install kcalc, for KDE's kalc
 
 unique remarks :
 sudo pkg install libva libva-nvidia-driver libva-utils
@@ -571,3 +626,4 @@ TODO:
 [X] mpv mpv-mpris2-fixed my own fork
 [X] Migrate my HDD to ZFS somehow
 [X] new snapshot of the current state of the boot drive, sata ssd, and hdd
+[] get OnlyOffice working
