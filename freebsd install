@@ -582,7 +582,27 @@ NOTE: I'm not sure if the problem has already disappeared. I *feel* that it has,
 Nope, the problem is still there. I can't be bothered to care about it that much. OSS works.
 
 
+scrcpy on FreeBSD :
+https://forums.freebsd.org/threads/howto-transfer-files-between-freebsd-and-android-devices.49820/post-415547
+https://github.com/Genymobile/scrcpy/issues/3258
+sudo adb kill-server; sudo adb devices
+# for some reason, without doing anything, scrcpy gets stuck at /usr/local/share/scrcpy/scrcpy-server: 1 file pushed, 0 skipped. 184.7 MB/s (90980 bytes in 0.000s)
+# to resolve this, run adb shell, and execute any command, even clear works. for some reason, after that it will successfully screencast?????
+# or you can do this, you may need to run this command 2 times, though
+adb shell "clear"
+scrcpy --list-encoders
 
+scrcpy --video-codec=h265 --video-encoder=c2.mtk.hevc.encoder --print-fps --max-fps=60 --audio-codec=opus --audio-encoder=c2.android.opus.encoder --audio-bit-rate=160K --audio-buffer=48 --mouse=uhid --keyboard=uhid --fullscreen --stay-awake --mouse-bind=++++ --shortcut-mod=ralt --video-bit-rate=25M --verbosity=verbose
+
+unresolved issues :
+# in FPS games, where mouse move directly moves the camera, your scroll wheel and mouse clicks can be dropped. This can be fixed by going to the escape menu, dragging and clicking on a space, and your issue should be resolved.
+# I don't know what causes this problem, as moving your mouse, while dragging with left click, is not logged as a press / touch by Android's debugging tools, so I can't debug it
+
+fun tweaks :
+# for games and Roblox itself to use tablet UIs (or desktop UIs?)
+adb shell wm density 175; adb shell wm size 1080x1920
+# you shall not panic
+adb shell wm density reset; adb shell wm size reset
 
 
 
