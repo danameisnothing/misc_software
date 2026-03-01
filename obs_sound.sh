@@ -3,10 +3,18 @@
 set -eo pipefail
 
 voss_pid=""
+voss_sr=""
 
 if [ -z "$1" ]; then
     echo "/dev/dsp redirect for virtual_oss not specified"
     exit 1
+fi
+
+if [ -z "$2" ]; then
+    echo "sample rate not set, defaulting to 44100kHz"
+    voss_sr="44100"
+else
+    voss_sr="$2"
 fi
 
 voss_redirect="$1"

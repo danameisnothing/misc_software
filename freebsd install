@@ -604,11 +604,65 @@ adb shell wm density 175; adb shell wm size 1080x1920
 # you shall not panic
 adb shell wm density reset; adb shell wm size reset
 
+/etc/rc.conf DHCP not found or something :
+# directly edit /etc/rc.conf with a text editor
+# in my case I had these weird entries with probably invalid syntax
+wlans_rtwn0=""wlan1""
+ifconfig_wlan1=""WPA DHCP""
+
+# remove ifconfig_wlan1, and change wlans_rtwn0's value to wlan0
+
+GNU/Linux watch command on FBSD :
+pkg install gnu-watch
 
 
+steam on frebsd :
+https://forums.freebsd.org/threads/steam-on-freebsd.87849/
+sudo pkg install linux-steam-utils
+# when you run `steam` for the first time, it pops up with this
+Please, make sure the following requirements are satisfied:
+  * Unprivileged chroot must be enabled
+  * Unprivileged mounts must be enabled
 
+Run (as root) `sysctl security.bsd.unprivileged_chroot=1`.
+Add the setting to /etc/sysctl.conf to persist it.
 
+Run (as root) `sysctl vfs.usermount=1`.
+Add the setting to /etc/sysctl.conf to persist it.
 
+# do as instructed
+# it will also complain about this :
+Steam doesn't appear to be installed for user testnow720.
+Perhaps you forgot to run /usr/local/steam-utils/bin/lsu-bootstrap?
+# again do it
+# it pops up about something about installing it to another user?
+# I "really couldn't care less", so
+/usr/local/steam-utils/bin/lsu-bootstrap --allow-stealing-my-passwords,-browser-history-and-ssh-keys
+# now launch steam
+# use freebsd wine on Compatibility
+# it may complain : /usr/local/steam-utils/tools/LSU_FreeBSD_Wine/run.rb: /home/testnow720/.i386-wine-pkg/usr/local/wine-proton/bin/wine doesn't exist!
+mkdir -p "/home/testnow720/.i386-wine-pkg/usr/local/wine-proton/bin" && ln -s "$(which wine)" "/home/testnow720/.i386-wine-pkg/usr/local/wine-proton/bin/wine"
+/usr/local/steam-utils/tools/LSU_FreeBSD_Wine/run.rb: /usr/local/wine-proton/bin/wine64 (9.0) and /home/testnow720/.i386-wine-pkg/usr/local/wine-proton/bin/wine (wine [wine-11.0] and wine64 [wine-11.3] versions do not match!
+
+Try updating 32-bit wine with
+        /usr/local/share/wine/pkg32.sh upgrade
+If you are on 15.0, then you can use the old repository
+        /usr/local/share/wine/pkg32.sh --old upgrade -r FreeBSD-ports
+wine-11.0) versions must match each other.
+
+# patch out the checks on run.rb that raises an exception if i386-windows don't exist. On my system, only x86_64-windows is present. comment them out. comment out Dir.chdir also to the one that references i386-windows. search in the source file
+
+# i gave up running Sheepy. It technically works, after you've waited for RtlpWaitForCriticalSection message once, close out the game from Steam, and it will maybe launch, but with a weird DXVK debug UI, and this is not what we want, of course, since exiting out means you (probably) can't get Steam achievements.
+# CS2 works for a few seconds after launching, but then crashes with an obscure error :
+FATAL ERROR: adding views while previous rendering is running. Someone needed to call WaitForRenderingToComplete()!!!
+# I couldn't find this anywhere
+# forcing CS:GO to this one :
+https://github.com/ValveSoftware/csgo-osx-linux/issues/3291#issuecomment-17404996
+# it works, but the startup delay is very bad for first time, so don't quickly give up like you usually do
+# use "LSU chroot with legacy Steam Runtime" for this one, the Steam Runtime 3 one just segfaults?
+# For some reason, the developer console refuses to actually execute commands. you can enter them on the devconsole's text box, but when you enter / click submit, no command appears to be received.
+https://github.com/ValveSoftware/SteamOS/issues/1053
+# that suggests a problem with the version of libSDL shipped?
 
 tech tips :
 - Make sure you have a ZFS snapshot, at least for your home folder. It saved my ass from accidentally overwriting a file.
