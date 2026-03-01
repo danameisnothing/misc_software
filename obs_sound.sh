@@ -24,7 +24,7 @@ main() {
     # prompt the sudo password first
     sudo printf ""
 
-    sudo virtual_oss -Q 2 -C 2 -c 2 -r 48000 -b 16 -s 1024 -P "$voss_redirect" -R "/dev/null" -w vdsp.wav -d "dsp" -l "mixer" &
+    sudo virtual_oss -Q 2 -C 2 -c 2 -r "$voss_sr" -b 16 -s 1024 -P "$voss_redirect" -R "/dev/null" -w vdsp.wav -d "dsp" -l "mixer" &
     voss_pid=$!
     trap cleanup SIGINT
 

@@ -664,6 +664,23 @@ https://github.com/ValveSoftware/csgo-osx-linux/issues/3291#issuecomment-1740499
 https://github.com/ValveSoftware/SteamOS/issues/1053
 # that suggests a problem with the version of libSDL shipped?
 
+# to run Classic Offensive, go to /usr/local/steam-utils/tools/LSU_FreeBSD_Wine/run.rb, edit out the wine64_bin and wine32_bin to point to native wine instead of wine-proton, also comment out the known versions check exit(1).
+# basically, search for "wine-proton/", and replace with nothing
+
+# it's me from the second day, and when I tried Sheepy, even with Steam Overlay enabled and not, it launched now?
+# I was in the middle of debugging CS:GO when I tried Sheepy again, it worked
+# I re-launched Steam, tried again, didn't work.
+# Tried again with nothing changed, and it worked?
+# What the fuck happened? maybe its because some of my modifications to LSU_FreeBSD_Wine/run.rb?
+# I used FreeBSD Wine (emulators/wine-proton) as a compatibility layer
+# my copy of the Ruby code is in this repository
+
+# the debug DXVK UI on Sheepy is (maybe) caused by this line in LSU_FreeBSD_Wine/run.rb :
+ENV['DXVK_HUD']  ||= 'frametimes,version,devinfo,fps'
+
+
+
+
 tech tips :
 - Make sure you have a ZFS snapshot, at least for your home folder. It saved my ass from accidentally overwriting a file.
 - When virtual_oss fails with creating a CUSE DSP device, check with service virtual_oss status, sudo kill $PID, then try again
@@ -701,3 +718,5 @@ TODO:
 [X] Migrate my HDD to ZFS somehow
 [X] new snapshot of the current state of the boot drive, sata ssd, and hdd
 [] get OnlyOffice working
+[] get MangoHud working for Steam games
+[] get UVR5 working
