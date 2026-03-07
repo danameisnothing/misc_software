@@ -616,7 +616,7 @@ GNU/Linux watch command on FBSD :
 pkg install gnu-watch
 
 
-steam on frebsd :
+steam on freebsd :
 https://forums.freebsd.org/threads/steam-on-freebsd.87849/
 sudo pkg install linux-steam-utils
 # when you run `steam` for the first time, it pops up with this
@@ -663,6 +663,9 @@ https://github.com/ValveSoftware/csgo-osx-linux/issues/3291#issuecomment-1740499
 # For some reason, the developer console refuses to actually execute commands. you can enter them on the devconsole's text box, but when you enter / click submit, no command appears to be received.
 https://github.com/ValveSoftware/SteamOS/issues/1053
 # that suggests a problem with the version of libSDL shipped?
+# Hey, me from the future here. I'm writing this on the 7th of March, Valve has separated CS:GO from CS2, now CS:GO has a standalone Steam page. When downloaded, the game has an additional compatibility option, Legacy runtime 1.0
+# When launched with that, the console works, but you can't connect to any game, even a local game.
+# what you do is, set `bind p "exec freebsd_bootstrapper"`, launching with the Legacy runtime 1.0 compatibility layer, change back to LSU chroot with legacy runtime, and now you can connect to the game, while still being able to execute console commands
 
 # to run Classic Offensive, go to /usr/local/steam-utils/tools/LSU_FreeBSD_Wine/run.rb, edit out the wine64_bin and wine32_bin to point to native wine instead of wine-proton, also comment out the known versions check exit(1).
 # basically, search for "wine-proton/", and replace with nothing
@@ -677,6 +680,53 @@ https://github.com/ValveSoftware/SteamOS/issues/1053
 
 # the debug DXVK UI on Sheepy is (maybe) caused by this line in LSU_FreeBSD_Wine/run.rb :
 ENV['DXVK_HUD']  ||= 'frametimes,version,devinfo,fps'
+
+rebuild DBus app list thing :
+update-desktop-database ~/.local/share/applications
+Google's AI Overview thing :
+To rebuild or refresh the D-Bus service list on Linux, you typically need to force the
+dbus-daemon to re-scan service files (often located in /usr/share/dbus-1/services or ~/.local/share/dbus-1/services) without a full system reboot.
+Here are the most common ways to achieve this based on your specific situation:
+1. Refreshing User/Session Services (Most Common)
+If you have installed a new app (like a Flatpak or desktop application) and it doesn't appear in the menu or D-Bus list, try these commands:
+
+    Restart the User D-Bus Session:
+    bash
+
+    systemctl --user restart dbus
+
+    Note: This might close some running background apps.
+    Refresh Desktop Files (If for application menus):
+    bash
+
+    update-desktop-database ~/.local/share/applications
+
+
+
+2. Refreshing System-Wide Services
+If you installed a system service (e.g., in /usr/share/dbus-1/system-services/), you may need to reload the system bus daemon.
+
+    Reload System D-Bus Configuration:
+    bash
+
+    sudo dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ReloadConfig
+
+3. Troubleshooting Flatpak/Specific App Issues
+If specific apps (like Flatpaks) are failing to start or not showing up, the D-Bus cache might be stale.
+
+    Restart the session user services (systemd):
+    bash
+
+    systemctl --user daemon-reload
+
+    Reboot: If the above methods fail, a reboot is the most reliable way to ensure all new .service files are loaded by dbus-daemon.
+
+Summary of Commands
+Goal 	Command
+List Session Services	qdbus or dbus-send --session --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames
+List System Services	qdbus --system or dbus-send --system --print-reply --dest=org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus.ListNames
+Restart User Bus	systemctl --user restart dbus
+Refresh Desktop DB	update-desktop-database
 
 
 
