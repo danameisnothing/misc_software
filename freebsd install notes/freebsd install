@@ -756,6 +756,11 @@ unique remarks :
 sudo pkg install libva libva-nvidia-driver libva-utils
 When I did that and tried recording with OBS, it just crashes. Only after I removed those did it start working again.
 
+btsixad patch on FreeBSD :
+# normal behaviour is, on apps trying to access controller, they will usually freeze, since for some reason btsixad (on my setup) tries to access the underlying controller in blocking mode, even though reports online shows no problems with btsixad
+# clone the repo, go to vuhid.c, on function `v_read`, there is an `int nonblock`. for some reason, this is set to 0 (on my setup). hardcode it to one : `int nonblock = 1;`
+# your controller shall work again
+
 TODO:
 [X] FreeBSD weird missing Unicode glyphs
 [X] Backup random data to NVMe SSD
@@ -770,4 +775,4 @@ TODO:
 [] get OnlyOffice working
 [] get MangoHud working for Steam games
 [] get UVR5 working
-[] get my knock-off PS3 controller working
+[X] get my knock-off PS3 controller working
