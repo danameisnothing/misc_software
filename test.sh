@@ -1,2 +1,2 @@
 #!/bin/sh
-feh --bg-scale "/home/testnow720/Desktop/wallpaper.png"
+feh --bg-scale "/usr/local/share/wallpapers/ScarletTree/contents/images_dark/5120x2880.png"

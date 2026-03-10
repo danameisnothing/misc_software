@@ -1,0 +1,9 @@
+sudo rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --stats --progress --fsync "/home/testnow720/Music/main music" "/home/testnow720-edu/media for studying/"
+sudo rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --stats --progress --fsync "/home/testnow720/Videos/furry ahh shit" "/home/testnow720-edu/media for studying/"
+sudo rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --stats --progress --fsync "/home/testnow720/Videos/hmm" "/home/testnow720-edu/media for studying/"
+sudo rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --stats --progress --fsync "/home/testnow720/Videos/normal-ish shit" "/home/testnow720-edu/media for studying/"
+sudo rsync --archive --verbose --perms --recursive --executability --specials --times --atimes --stats --progress --fsync "/home/testnow720/Desktop/Be Yourself Regardless - The Transfemme Field Guide.mkv" "/home/testnow720-edu/media for studying/"
+
+sudo chown -R testnow720-edu:testnow720-edu "/home/testnow720-edu/media for studying/"
+
+sudo pkg install fvwm3 xfe

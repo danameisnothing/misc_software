@@ -1,0 +1,87 @@
+# started from https://www.reddit.com/r/unixporn/comments/1mfmkg3/twm_minimal_setup_for_studying/
+# https://linux.die.net/man/1/twm
+# secondary source : https://www.reddit.com/r/unixporn/comments/ut5rpx/twm_this_is_amazing/ (https://github.com/zolotvok/twm-pink-theme/blob/main/twmrc)
+# also NCommander (FOSSfirefighter) : https://www.reddit.com/r/unixporn/comments/tcgs8l/twm_as_it_turns_out_with_a_little_bit_of_elbow/
+# another random sauce : https://gist.github.com/JanoVel/19dd98ed106b5dc7f15b6d0e70d196fa
+# more sos : https://www.youtube.com/watch?v=gp8ngijtfMg
+NoGrabServer
+OpaqueMove
+Priority 0
+RandomPlacement
+NoTitleHighlight
+ShowIconManager
+# https://github.com/amade/twm/blob/master/sample-twmrc/jim.twmrc (why is this disabled by default?)
+UsePPosition "on"
+# this looks surprisingly good
+TitleFont "-misc-fixed-bold-*-*-*-14-*-*-*-*-*-*-*"
+IconFont "-misc-fixed-medium-*-*-*-14-*-*-*-*-*-*-*"
+IconManagerFont "-misc-fixed-medium-*-*-*-14-*-*-*-*-*-*-*"
+MenuFont "-misc-fixed-medium-*-*-*-14-*-*-*-*-*-*-*"
+ResizeFont "-misc-fixed-medium-*-*-*-14-*-*-*-*-*-*-*"
+
+# COPIED STRAIGHT! MODIFY THIS!
+#IconDirectory		"/home/fauzy/.twm"
+#LeftTitleButton		"resize.xbm"=f.resize
+#RightTitleButton	"minimize.xbm"=f.iconify
+#RightTitleButton	"maximize.xbm"=f.fullzoom
+#RightTitleButton	"close.xbm"=f.delete
+
+Function "move_raise_focus" {
+    f.move
+    f.raise
+}
+# https://www.linuxquestions.org/questions/*bsd-17/twm-maximise-maximize-4175618143/
+Function "fsc" { f.fullzoom f.focus }
+
+# from https://github.com/KDE/breeze/blob/master/colors/BreezeDark.colors
+# MenuBackground, MenuForeground, MenuTitleBackground, MenuTitleForeground, MenuShadowColor, MenuBorderColor
+Color {
+    MenuBackground "#202326"
+    MenuForeground "#ddeaeb"
+
+    IconManagerBackground "#202326"
+    IconManagerForeground "#ddeaeb"
+
+    TitleBackground "#202326"
+    TitleForeground "#ddeaeb"
+}
+
+# you will never have a good wallpaper /r/freebsd meme wallpaper thing
+Menu "program_opts"
+{
+    # This env var apparently got it to use dark themes for KDE's stock programs
+    # you are not supposed to use f.title more than once, but this works, so :)
+    "Standard" f.title
+    "Kate" f.exec "XDG_CURRENT_DESKTOP=KDE kate &"
+    "Dolphin" f.exec "XDG_CURRENT_DESKTOP=KDE dolphin &"
+    "Firefox" f.exec "XDG_CURRENT_DESKTOP=KDE firefox &"
+    "Administative stuff" f.title
+    "pavucontrol" f.exec "XDG_CURRENT_DESKTOP=KDE pavucontrol &"
+    "Konsole" f.exec "XDG_CURRENT_DESKTOP=KDE konsole &"
+}
+# Inspired by Plasma's options
+Menu "session_opts"
+{
+    "Restart twm" f.restart
+    "Quit twm" f.menu "confirm_quit"
+}
+Menu "confirm_quit" {
+    "Really sure about that?" f.title
+    "Yes" f.quit
+    "No" f.nop
+}
+# https://unix.stackexchange.com/a/368930
+# looking at them sources, many of them use "defops" for the name, so I'll go along
+Menu "defops"
+{
+    "Actions - twm" f.title
+    "Programs" f.menu "program_opts"
+    "" f.nop
+    "Session" f.menu "session_opts"
+}
+
+Button1 = : root : f.menu "defops"
+Button1 = : title : f.function "move_raise_focus"
+#Button1 = : window|icon : f.function "move_raise_focus"
+
+RightTitleButton "maximize.xbm" = f.function "fsc"

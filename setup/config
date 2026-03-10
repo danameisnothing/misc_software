@@ -1,0 +1,32 @@
+DesktopSize 1x1
+ClickTime 300
+MoveThreshold 2
+Style * ResizeOpaque, ClickToFocus, MouseFocusClickRaises, MinOverlapPlacement, SnapAttraction 5
+# this one isn't available in the https://www.fvwm.org/Man/fvwm3styles/, odd
+OpaqueMoveSize unlimited
+# https://www.fvwm.org/Man/fvwm3styles/, BorderWidth, HandleWidth?, CornerLength, IconBox, MiniIcon, IconGrid
+TitleStyle LeftJustified
+DefaultFont "xft:JetBrains Mono:style=Regular:antialias=True"
+# TODO: currently, sometimes click-to-raise and click-to-focus doesn't work for programs when clicking on its body. clicking on titlebar works for all programs, though
+
+# what is this DestroyMenu idiom?
+# TODO: proper icon, like in config_reference
+DestroyMenu popup_programs
+AddToMenu popup_programs "test" Title
+ + "Firefox" Exec exec firefox
+ + "Xfe" Exec exec xfe
+ + "" Nop
+ + "Konsole" Exec exec konsole
+ + "" Nop
+ + "YOU SHALL NOT USE THIS!" Nop
+ + "dolphin" Exec exec dolphin
+
+DestroyMenu rclick_root_menu
+# TODO: proper icon, like in config_reference
+AddToMenu rclick_root_menu "FVWM Context Menu" Title
+ + "Programs" Popup popup_programs
+ + "Restart" Restart
+# TODO: PROTECTION!
+ + "Quit" Quit
+# how is right click Mouse 3???
+Mouse 3 R A Menu rclick_root_menu
