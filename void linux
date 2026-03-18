@@ -52,7 +52,10 @@ sudo ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf /etc/pipewire/pip
 # we configure system-wide, can't be fucked
 
 utils 'n stuff :
-xbps-install mpv firefox gwenview zsh zsh-autosuggestions zsh-syntax-highlighting ark MangoHud wget curl git go rust unzip github-cli rsync
+xbps-install mpv firefox gwenview zsh zsh-autosuggestions zsh-syntax-highlighting ark MangoHud wget curl git go rust unzip github-cli rsync cargo wine bluez libspa-bluetooth spectacle
+
+blueteeth :
+https://docs.voidlinux.org/config/bluetooth.html
 
 Steam :
 https://www.reddit.com/r/voidlinux/comments/1by6qp5/ill_leave_this_guide_to_install_steam_on_void/
@@ -66,8 +69,8 @@ I install on ~/.local/programs. fuck standards
 
 TODO:
 [x] copy over CotL Woolhaven
-[] copy cotl saves too!
+[X] copy cotl saves too!
 [] copy over multimedia stuff
-[x] dart and flutter
-[x] copy Classic Offensive
-[] JetBrainsMono
+[X] dart and flutter
+[X] copy Classic Offensive
+[X] JetBrainsMono
