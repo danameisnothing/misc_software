@@ -52,7 +52,7 @@ sudo ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf /etc/pipewire/pip
 # we configure system-wide, can't be fucked
 
 utils 'n stuff :
-xbps-install mpv firefox gwenview zsh zsh-autosuggestions zsh-syntax-highlighting ark MangoHud wget curl git go rust
+xbps-install mpv firefox gwenview zsh zsh-autosuggestions zsh-syntax-highlighting ark MangoHud wget curl git go rust unzip github-cli rsync
 
 Steam :
 https://www.reddit.com/r/voidlinux/comments/1by6qp5/ill_leave_this_guide_to_install_steam_on_void/
@@ -61,9 +61,13 @@ sudo xbps-install libgcc-32bit libstdc++-32bit libdrm-32bit libglvnd-32bit mono 
 Visual Studio Code :
 https://www.reddit.com/r/voidlinux/comments/ya8qul/how_to_install_real_vscode_on_void_linux/
 https://old.reddit.com/r/voidlinux/comments/wlo2yv/what_is_the_best_way_to_install_vscode_not_oss/ijwf2w4/
+https://www.reddit.com/r/linuxquestions/comments/1g1iryv/where_to_install_custom_software_opt_usrlocal/
+I install on ~/.local/programs. fuck standards
 
 TODO:
-[] copy over CotL Woolhaven
+[x] copy over CotL Woolhaven
+[] copy cotl saves too!
 [] copy over multimedia stuff
-[] dart and flutter
-[] copy Classic Offensive
+[x] dart and flutter
+[x] copy Classic Offensive
+[] JetBrainsMono
