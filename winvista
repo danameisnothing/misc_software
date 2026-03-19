@@ -1,0 +1,48 @@
+Fuck Windows. It bugchecked while I was building this guide, I lost all my sources. Anyway,
+
+use as base :
+https://www.youtube.com/watch?v=T07Ay2R2Q8w
+
+xHCI drivers and patches :
+https://board.eclipse.cx/viewtopic.php?t=540
+https://www.catalog.update.microsoft.com/Search.aspx?q=KB2864202
+
+pointers :
+https://www.reddit.com/r/WindowsVista/comments/1hro07o/how_to_add_usb_30_drivers_to_vista_installation/
+https://msfn.org/board/topic/180769-intel-usb3-xhci-driver-for-windows-vista-x86x64/
+https://www.asrock.com/microsite/Win7Install/index.html
+
+Windows Vista AIK :
+https://www.microsoft.com/en-us/download/details.aspx?id=10333
+# it's incredible that Microsoft still kept this up
+
+incredible resource :
+https://blog.mszcool.com/msdnblogarchive/2006/12/30/creating-a-windows-pe-bootcd-with-windows-vista-and-windows-aik-to-get-rid-of-your-demomachines.html
+# DISM can't service Windows Vista RTM stuff. yay.
+
+getting the drivers in there :
+mkdir C:\WinVistaBootWim
+Note that I asked Claude here. I don't care :
+# my previous experience (before the bugcheck, fuck you Windows) tells me that this is the same as dism /Get-WimInfo /WimFile:D:\sources\boot.wim
+imagex /info D:\sources\boot.wim
+imagex /mountrw D:\sources\boot.wim 2 C:\WinVistaBootWim
+peimg /inf="C:\Users\testnow720\Downloads\XHCI_UASP_VISTA_WIN7_MUI (2021, v2)\XHCI\x64\USBXHCI.inf" C:\WinVistaBootWim
+peimg /inf="C:\Users\testnow720\Downloads\XHCI_UASP_VISTA_WIN7_MUI (2021, v2)\UASPSTOR\x64\uaspstor.inf" C:\WinVistaBootWim
+imagex /unmount C:\WinVistaBootWim /commit
+
+# according to its output, this by default apparently discards changes, wow.
+imagex /unmount C:\WinVistaBootWim
+
+# NOTE: this apparently bugchecked the system, so I conceded defeat, and downloaded a pre-made ISO.
+https://www.reddit.com/r/WindowsVista/comments/1bvhukk/generic_usb_30_drivers/
+https://board.eclipse.cx/viewtopic.php?t=402
+
+Windows generic keys :
+https://github.com/iMoeAriaCG/Windows-Key-Collection
+
+Snappy Driver Installer :
+https://sdi-tool.org/download/
+NOTE: it can take a while to download stuff. be patient.
+
+TODO: TRIM utilities, since Vista apparently doesn't support TRIM
+https://www.reddit.com/r/WindowsVista/comments/1r30l7v/how_can_i_find_a_windows_vista_x64_ultra_with_usb/
