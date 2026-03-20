@@ -52,7 +52,7 @@ sudo ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf /etc/pipewire/pip
 # we configure system-wide, can't be fucked
 
 utils 'n stuff :
-xbps-install mpv firefox gwenview zsh zsh-autosuggestions zsh-syntax-highlighting ark MangoHud wget curl git go rust unzip github-cli rsync cargo wine bluez libspa-bluetooth spectacle ffmpeg6 sysstat nodejs
+xbps-install mpv firefox gwenview zsh zsh-autosuggestions zsh-syntax-highlighting ark MangoHud wget curl git go rust unzip github-cli rsync cargo wine bluez libspa-bluetooth spectacle ffmpeg6 sysstat nodejs partitionmanager exfatprogs
 
 blueteeth :
 https://docs.voidlinux.org/config/bluetooth.html
