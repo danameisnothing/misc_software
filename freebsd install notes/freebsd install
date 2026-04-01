@@ -761,6 +761,12 @@ btsixad patch on FreeBSD :
 # normal behaviour is, on apps trying to access controller, they will usually freeze, since for some reason btsixad (on my setup) tries to access the underlying controller in blocking mode, even though reports online shows no problems with btsixad
 # clone the repo, go to vuhid.c, on function `v_read`, there is an `int nonblock`. for some reason, this is set to 0 (on my setup). hardcode it to one : `int nonblock = 1;`
 # your controller shall work again
+# EDIT: this broke again!
+
+anacron :
+https://www.baeldung.com/linux/crontab-scheduled-jobs-computer-shutdown
+https://man.freebsd.org/cgi/man.cgi?anacron(8)
+https://docs.freebsd.org/en/books/handbook/config/#cron-periodic
 
 TODO:
 [X] FreeBSD weird missing Unicode glyphs
