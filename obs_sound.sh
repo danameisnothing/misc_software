@@ -12,7 +12,7 @@ fi
 
 if [ -z "$2" ]; then
     echo "sample rate not set, defaulting to 44100kHz"
-    voss_sr="44100"
+    voss_sr="48000"
 else
     voss_sr="$2"
 fi

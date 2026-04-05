@@ -35,3 +35,5 @@ sudo kldload cpuctl
 NOTE!
 I don't have XNVCtrl enabled, so the #ifdef guards checking HAVE_XNVCTRL won't be compiled. I did NOT modify the functions in HAVE_XNVCTRL! Do not be surprised if they lead to broken behaviour!
 ```
+
+To re-apply, `git apply --reject --whitespace=fix new.patch`
