@@ -1,0 +1,19 @@
+pkgrecv add :
+https://docs.openindiana.org/handbook/getting-started/#creating-the-p5p-package
+https://serverfault.com/a/348265 // this has examples for the official OpenIndiana repo, which now redirects to pkg.openindiana.org/hipster
+
+- pkgrecv -s https://pkg.openindiana.org/hipster -d ~/bhyve.p5p -a -r pkg:/system/zones/brand/bhyve@0.5.11-2025.0.0.5626
+- pkgrecv -s https://pkg.openindiana.org/hipster-encumbered -d ~/ffmpeg.p5p -a -r pkg:/video/ffmpeg@7.0.1-2024.0.0.0
+- pkgrecv -s https://pkg.openindiana.org/hipster-encumbered -d ~/vlc.p5p -a -r pkg:/media/vlc@3.0.20-2024.0.0.4
+
+hipster-encumbered repo :
+https://docs.openindiana.org/handbook/systems-administration/#example_1 // the official docs is wrong, what the hell?
+https://www.dedoimedo.com/computers/openindiana-hipster.html // for actual working example, under "Package management & new software"
+
+mounting flash drives :
+https://docs.oracle.com/cd/E53394_01/html/E54782/devusbtasks-22.html
+https://openindiana.org/pipermail/openindiana-discuss/2022-December/025918.html
+https://sites.google.com/site/chrislent/chris-lents-home-page/formatting-a-ms-dos-fat32-disk-partition-under-solaris-10openindiana
+// note that MS-DOS means the flash drive must be MBR. I read that OpenIndiana is supposed to auto-mount flash drives. That only works with MBR
+
+bhyve bullcrap
